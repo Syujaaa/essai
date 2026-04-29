@@ -77,7 +77,7 @@ export default function StoryPage({ mode, onBack }) {
     recognition.onerror = (event) => {
       console.error("Error mikrofon:", event.error);
       setIsListening(false);
-      if (mode === 'tuna_netra') {
+      if (mode !== 'tuna_netra') {
         setTimeout(() => recognition.start(), 1000);
       }
     };
