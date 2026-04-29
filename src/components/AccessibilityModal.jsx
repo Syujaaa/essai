@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 export default function AccessibilityModal({ onSelectMode }) {
   const [isOpen, setIsOpen] = useState(true);
-  const [subtitle, setSubtitle] = useState(""); // Tulisan yang dibacakan sistem
+  const [subtitle, setSubtitle] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const recognitionRef = useRef(null);
@@ -14,19 +14,16 @@ export default function AccessibilityModal({ onSelectMode }) {
     { id: 'autis', label: 'Autis', icon: '🧩', color: 'bg-purple-100 text-purple-900', desc: 'Struktur Jelas' },
   ];
 
-  // Fungsi Narator (Text-to-Speech)
   const speak = (text) => {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'id-ID';
     utterance.rate = 0.9;
     
-    // Update subtitle saat suara mulai
     setSubtitle(text);
     window.speechSynthesis.speak(utterance);
   };
 
-  // Fungsi Mikrofon (Speech-to-Text) - Selalu Nyala
   const startListening = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -34,7 +31,7 @@ export default function AccessibilityModal({ onSelectMode }) {
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
     recognition.lang = 'id-ID';
-    recognition.continuous = true; // Mikrofon tetap menyala
+    recognition.continuous = true;
     recognition.interimResults = false;
 
     recognition.onstart = () => setIsListening(true);
@@ -50,7 +47,6 @@ export default function AccessibilityModal({ onSelectMode }) {
     };
 
     recognition.onerror = () => {
-      // Jika error (misal: diam terlalu lama), nyalakan lagi
       setTimeout(() => recognition.start(), 1000);
     };
 
@@ -81,58 +77,60 @@ export default function AccessibilityModal({ onSelectMode }) {
     <>
       {isOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4"
-          onClick={activateSystem} // Memicu aktivasi pada klik pertama
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-3 sm:p-6"
+          onClick={activateSystem}
         >
-          <div className="relative w-full max-w-4xl bg-white shadow-2xl rounded-[40px] overflow-hidden p-8 md:p-12 border-4 border-blue-200">
+          <div className="relative w-full max-w-4xl max-h-[95vh] overflow-y-auto bg-white shadow-2xl rounded-3xl sm:rounded-[40px] p-5 sm:p-8 md:p-12 border-2 sm:border-4 border-blue-200 hide-scrollbar">
             
-            {/* Header */}
-            <div className="text-center mb-10">
-              <h1 className="text-3xl md:text-4xl font-black text-slate-800 mb-4">
+            <div className="text-center mb-6 sm:mb-10 mt-2 sm:mt-0">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-800 mb-3 sm:mb-4">
                 Pilih Mode Belajar 🚀
               </h1>
               {!hasInteracted && (
-                <div className="inline-block px-6 py-2 bg-yellow-400 text-yellow-900 font-bold rounded-full animate-bounce">
-                  Klik di mana saja untuk mulai suara
+                <div className="inline-block px-4 sm:px-6 py-2 bg-yellow-400 text-yellow-900 text-sm sm:text-base font-bold rounded-full animate-bounce">
+                  Klik di mana saja untuk mulai
                 </div>
               )}
             </div>
 
             {/* Grid Pilihan */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
               {options.map((opt) => (
                 <button
                   key={opt.id}
-                  onClick={() => handleSelect(opt.id)}
-                  className={`flex flex-col items-center p-6 rounded-[30px] transition-all hover:scale-105 active:scale-95 ${opt.color} border-b-8 border-black/10`}
+                  onClick={(e) => {
+                    e.stopPropagation(); 
+                    handleSelect(opt.id);
+                  }}
+                  className={`flex flex-col items-center p-4 sm:p-6 rounded-2xl sm:rounded-[30px] transition-all hover:scale-105 active:scale-95 ${opt.color} border-b-4 sm:border-b-8 border-black/10`}
                 >
-                  <span className="text-5xl mb-4">{opt.icon}</span>
-                  <span className="font-bold text-lg">{opt.label}</span>
-                  <span className="text-xs opacity-70 mt-1">{opt.desc}</span>
+                  <span className="text-4xl sm:text-5xl mb-2 sm:mb-4">{opt.icon}</span>
+                  <span className="font-bold text-base sm:text-lg">{opt.label}</span>
+                  <span className="text-[10px] sm:text-xs opacity-80 mt-1 text-center">{opt.desc}</span>
                 </button>
               ))}
             </div>
 
-            {/* Kotak Subtitle (Transkrip Narator) */}
-            <div className="mt-12 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 relative">
-              <div className="absolute -top-4 left-6 px-4 bg-white text-slate-400 text-sm font-bold flex items-center gap-2">
+            {/* Kotak Subtitle */}
+            <div className="mt-8 sm:mt-12 p-4 sm:p-6 bg-slate-50 rounded-xl sm:rounded-2xl border-2 border-dashed border-slate-200 relative">
+              <div className="absolute -top-3 sm:-top-4 left-4 sm:left-6 px-2 sm:px-4 bg-white text-slate-400 text-xs sm:text-sm font-bold flex items-center gap-2">
                 <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-                SISTEM BERBICARA:
+                SISTEM:
               </div>
-              <p className="text-xl md:text-2xl text-center font-medium text-slate-700 italic">
+              <p className="text-lg sm:text-xl md:text-2xl text-center font-medium text-slate-700 italic mt-2">
                 "{subtitle || "..."}"
               </p>
             </div>
 
             {/* Indikator Mikrofon */}
             {isListening && (
-              <div className="mt-6 flex justify-center items-center gap-3 text-green-600">
+              <div className="mt-4 sm:mt-6 flex justify-center items-center gap-2 sm:gap-3 text-green-600">
                 <div className="flex gap-1">
-                  <div className="w-1 h-4 bg-green-500 animate-bounce"></div>
-                  <div className="w-1 h-6 bg-green-500 animate-bounce [animation-delay:0.2s]"></div>
-                  <div className="w-1 h-4 bg-green-500 animate-bounce [animation-delay:0.4s]"></div>
+                  <div className="w-1 h-3 sm:h-4 bg-green-500 animate-bounce"></div>
+                  <div className="w-1 h-5 sm:h-6 bg-green-500 animate-bounce [animation-delay:0.2s]"></div>
+                  <div className="w-1 h-3 sm:h-4 bg-green-500 animate-bounce [animation-delay:0.4s]"></div>
                 </div>
-                <span className="text-sm font-bold tracking-widest uppercase">Mikrofon Aktif</span>
+                <span className="text-xs sm:text-sm font-bold tracking-widest uppercase">Mikrofon Aktif</span>
               </div>
             )}
 
