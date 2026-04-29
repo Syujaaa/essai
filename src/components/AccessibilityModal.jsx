@@ -15,13 +15,19 @@ export default function AccessibilityModal({ onSelectMode }) {
     { id: 'tuna_daksa', label: 'Tuna Daksa', icon: '♿', color: 'bg-rose-100 text-rose-900', desc: 'Akses Motorik' },
   ];
 
-  const speak = (text) => {
+  const speak = (text, onFinish) => {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'id-ID';
     utterance.rate = 0.9;
     
     setSubtitle(text);
+    
+    // Menunggu suara selesai sebelum menjalankan callback
+    if (onFinish) {
+      utterance.onend = onFinish;
+    }
+    
     window.speechSynthesis.speak(utterance);
   };
 
@@ -41,7 +47,7 @@ export default function AccessibilityModal({ onSelectMode }) {
       const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
       console.log("Input Suara:", transcript);
 
-      // Logika untuk mengenali suara Tuna Daksa
+
       if (transcript.includes("netra")) handleSelect('tuna_netra');
       else if (transcript.includes("rungu")) handleSelect('tuna_rungu');
       else if (transcript.includes("grahita")) handleSelect('tuna_grahita');
@@ -58,13 +64,11 @@ export default function AccessibilityModal({ onSelectMode }) {
 
   const handleSelect = (id) => {
     const selected = options.find(opt => opt.id === id);
-    speak(`Mode ${selected.label} dipilih. Memuat halaman.`);
-    
-    setTimeout(() => {
+    speak(`Mode ${selected.label} dipilih. Memuat halaman.`, () => {
       if (recognitionRef.current) recognitionRef.current.stop();
       setIsOpen(false);
       onSelectMode(id);
-    }, 2000);
+    });
   };
 
   const activateSystem = () => {
