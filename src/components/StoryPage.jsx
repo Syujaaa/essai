@@ -3,7 +3,6 @@ import React, { useEffect, useState, useRef } from 'react';
 export default function StoryPage({ mode, onBack }) {
   const [isReading, setIsReading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1); 
-
   const [isListening, setIsListening] = useState(false);
 
   const lineRefs = useRef([]);
@@ -37,7 +36,9 @@ export default function StoryPage({ mode, onBack }) {
   };
 
   const startListening = () => {
-    if (mode !== 'tuna_netra') return;
+    // UBAH DISINI: Hentikan fungsi HANYA jika mode adalah 'tuna_rungu'
+    if (mode === 'tuna_rungu') return; 
+    
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -77,7 +78,8 @@ export default function StoryPage({ mode, onBack }) {
     recognition.onerror = (event) => {
       console.error("Error mikrofon:", event.error);
       setIsListening(false);
-      if (mode !== 'tuna_rungu') {
+      // UBAH DISINI: Coba restart mikrofon untuk semua mode kecuali tuna_rungu
+      if (mode !== 'tuna_rungu') { 
         setTimeout(() => recognition.start(), 1000);
       }
     };
@@ -87,55 +89,53 @@ export default function StoryPage({ mode, onBack }) {
   };
 
   const playSequentialStory = (index = 0) => {
-  if (mode === 'tuna_rungu') return;
+    if (mode === 'tuna_rungu') return;
 
-  if (index >= storyContent.length) {
-    setIsReading(false);
-    setActiveIndex(-1);
-
-    setTimeout(() => {
-      const closingText =
-        "Ceritanya sudah selesai. Jika ingin mendengarnya sekali lagi, cukup ucapkan 'Baca lagi'. Atau, jika ingin ke menu utama, silakan katakan 'Kembali'.";
-      speakUI(closingText, () => {
-        startListening();
-      });
-    }, 500);
-
-    return;
-  }
-
-  setIsReading(true);
-  setActiveIndex(index);
-
-  const textToSpeak =
-    index === 0
-      ? `${storyTitle}. ${storyContent[index]}`
-      : storyContent[index];
-
-  setTimeout(() => {
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.lang = 'id-ID';
-    utterance.rate = 0.85;
-
-    utterance.onend = () => {
-      playSequentialStory(index + 1);
-    };
-
-   utterance.onerror = (event) => {
-      if (event.error === 'canceled' || event.error === 'interrupted') {
-        return; 
-      }
+    if (index >= storyContent.length) {
       setIsReading(false);
       setActiveIndex(-1);
-    };
 
-    
+      setTimeout(() => {
+        const closingText =
+          "Ceritanya sudah selesai. Jika ingin mendengarnya sekali lagi, cukup ucapkan 'Baca lagi'. Atau, jika ingin ke menu utama, silakan katakan 'Kembali'.";
+        speakUI(closingText, () => {
+          startListening();
+        });
+      }, 500);
 
-    window.speechSynthesis.speak(utterance);
-  }, 200);
-};
+      return;
+    }
+
+    setIsReading(true);
+    setActiveIndex(index);
+
+    const textToSpeak =
+      index === 0
+        ? `${storyTitle}. ${storyContent[index]}`
+        : storyContent[index];
+
+    setTimeout(() => {
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = 'id-ID';
+      utterance.rate = 0.85;
+
+      utterance.onend = () => {
+        playSequentialStory(index + 1);
+      };
+
+      utterance.onerror = (event) => {
+        if (event.error === 'canceled' || event.error === 'interrupted') {
+          return; 
+        }
+        setIsReading(false);
+        setActiveIndex(-1);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }, 200);
+  };
 
   useEffect(() => {
     if (activeIndex >= 0 && lineRefs.current[activeIndex]) {
@@ -147,14 +147,14 @@ export default function StoryPage({ mode, onBack }) {
   }, [activeIndex]);
 
   useEffect(() => {
-  if (mode !== 'tuna_rungu') {
-    setTimeout(() => {
-      playSequentialStory(0);
-    }, 300); 
-  }
+    if (mode !== 'tuna_rungu') {
+      setTimeout(() => {
+        playSequentialStory(0);
+      }, 300); 
+    }
 
-  return () => window.speechSynthesis.cancel();
-}, [mode]);
+    return () => window.speechSynthesis.cancel();
+  }, [mode]);
 
   return (
     <main className="min-h-screen bg-white p-4 sm:p-10 flex flex-col items-center">
@@ -202,24 +202,23 @@ export default function StoryPage({ mode, onBack }) {
 
         <div className="mt-12 flex flex-col items-center min-h-[64px]">
           
-         
+          {/* Animasi Mikrofon */}
           {isListening && mode !== 'tuna_rungu' && (
             <div className="mb-6 flex justify-center items-center gap-3 text-green-600">
-          <div className="flex gap-1">
-            <div className="w-1 h-3 sm:h-4 bg-green-500 animate-bounce"></div>
-            <div className="w-1 h-5 sm:h-6 bg-green-500 animate-bounce [animation-delay:0.2s]"></div>
-            <div className="w-1 h-3 sm:h-4 bg-green-500 animate-bounce [animation-delay:0.4s]"></div>
-          </div>
-          <span className="text-sm sm:text-base font-bold tracking-widest uppercase">Mikrofon Aktif</span>
-        </div>
+              <div className="flex gap-1">
+                <div className="w-1 h-3 sm:h-4 bg-green-500 animate-bounce"></div>
+                <div className="w-1 h-5 sm:h-6 bg-green-500 animate-bounce [animation-delay:0.2s]"></div>
+                <div className="w-1 h-3 sm:h-4 bg-green-500 animate-bounce [animation-delay:0.4s]"></div>
+              </div>
+              <span className="text-sm sm:text-base font-bold tracking-widest uppercase">Mikrofon Aktif</span>
+            </div>
           )}
 
+          
           {!isReading && mode !== 'tuna_rungu' ? (
             <div className="flex gap-4 w-full justify-center animate-in slide-in-from-bottom-4 duration-500">
               <button 
                 onClick={() => playSequentialStory(0)}
-                // onMouseEnter={() => speakUI("Bacakan cerita dari awal")}
-                // onFocus={() => speakUI("Tombol. Ingin saya bacakan lagi?")}
                 className="px-8 py-4 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold text-lg sm:text-xl rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 focus:ring-4 focus:ring-yellow-600"
               >
                 🔄 Bacakan Lagi
@@ -229,8 +228,6 @@ export default function StoryPage({ mode, onBack }) {
                   window.speechSynthesis.cancel();
                   onBack();
                 }}
-                // onMouseEnter={() => speakUI("Kembali ke menu utama")}
-                // onFocus={() => speakUI("Tombol. Kembali ke menu utama")}
                 className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg sm:text-xl rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 focus:ring-4 focus:ring-emerald-300"
               >
                 🏠 Kembali Menu
