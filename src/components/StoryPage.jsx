@@ -35,58 +35,66 @@ export default function StoryPage({ mode, onBack }) {
     window.speechSynthesis.speak(utterance);
   };
 
-  const startListening = () => {
-    // UBAH DISINI: Hentikan fungsi HANYA jika mode adalah 'tuna_rungu'
-    if (mode === 'tuna_rungu') return; 
-    
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      console.warn("Browser tidak mendukung perintah suara.");
-      return;
-    }
+ const startListening = () => {
+  if (mode === 'tuna_rungu') return;
+  
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return;
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'id-ID'; 
-    recognition.continuous = true;
-    recognition.interimResults = false;
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'id-ID'; 
+  recognition.continuous = true; 
+  recognition.interimResults = false;
 
-    recognition.onstart = () => {
-      setIsListening(true);
-      console.log("Mikrofon aktif, silakan bicara...");
-    };
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
-      console.log("Pengguna mengucapkan:", transcript);
-
-      if (transcript.includes('lagi') || transcript.includes('baca')) {
-        recognition.stop();
-        playSequentialStory(0);
-      } 
-      else if (transcript.includes('kembali') || transcript.includes('menu') || transcript.includes('utama')) {
-        recognition.stop();
-        window.speechSynthesis.cancel();
-        onBack();
-      }
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognition.onerror = (event) => {
-      console.error("Error mikrofon:", event.error);
-      setIsListening(false);
-      // UBAH DISINI: Coba restart mikrofon untuk semua mode kecuali tuna_rungu
-      if (mode !== 'tuna_rungu') { 
-        setTimeout(() => recognition.start(), 1000);
-      }
-    };
-
-    // Mulai mendengarkan
-    recognition.start();
+  recognition.onstart = () => {
+    setIsListening(true);
+    console.log("Mikrofon aktif, menunggu perintah...");
   };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+    console.log("Kata tertangkap:", transcript);
+
+  
+    if (transcript.includes('lagi') || transcript.includes('baca')) {
+      console.log("Perintah cocok: Baca Lagi");
+      recognition.stop(); 
+      playSequentialStory(0);
+    } 
+  
+    else if (transcript.includes('kembali') || transcript.includes('menu') || transcript.includes('utama')) {
+      console.log("Perintah cocok: Kembali");
+      recognition.stop(); 
+      window.speechSynthesis.cancel();
+      onBack();
+    }
+   
+    else {
+      console.log("Kata tidak dikenali, sistem diam dan tetap mendengarkan...");
+      
+    }
+  };
+
+  recognition.onend = () => {
+  
+    if (!isReading && mode !== 'tuna_rungu') {
+      console.log("Restarting microphone untuk standby...");
+      try {
+        recognition.start();
+      } catch (e) {
+        console.error("Gagal restart mic:", e);
+      }
+    } else {
+      setIsListening(false);
+    }
+  };
+
+  recognition.onerror = (event) => {
+    console.error("Error mikrofon:", event.error);
+  };
+
+  recognition.start();
+};
 
   const playSequentialStory = (index = 0) => {
     if (mode === 'tuna_rungu') return;
