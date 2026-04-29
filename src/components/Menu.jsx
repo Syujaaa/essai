@@ -5,7 +5,6 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
   const recognitionRef = useRef(null);
   
   const speak = (text, onFinish) => {
-   
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'id-ID';
@@ -78,36 +77,57 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
       const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
       console.log("Input Suara:", transcript);
 
-      // Logika untuk mengenali perintah suara menu
       let selectedMenu = null;
       
+      // Deteksi kata kunci
       if (transcript.includes("panduan")) {
         selectedMenu = menuItems.find(m => m.id === 'panduan');
-        if (selectedMenu) handleMenuClick(selectedMenu);
       } else if (transcript.includes("cerita")) {
         selectedMenu = menuItems.find(m => m.id === 'cerita');
-        if (selectedMenu) handleMenuClick(selectedMenu);
       } else if (transcript.includes("film")) {
         selectedMenu = menuItems.find(m => m.id === 'film');
-        if (selectedMenu) handleMenuClick(selectedMenu);
       } else if (transcript.includes("game")) {
         selectedMenu = menuItems.find(m => m.id === 'game');
-        if (selectedMenu) handleMenuClick(selectedMenu);
       } else if (transcript.includes("studi kasus") || transcript.includes("studi")) {
         selectedMenu = menuItems.find(m => m.id === 'studi_kasus');
-        if (selectedMenu) handleMenuClick(selectedMenu);
-      } else if (transcript.includes("ganti mode")) {
+      }
+
+      // Eksekusi jika ada yang cocok
+      if (selectedMenu) {
+        recognition.stop(); // HANYA matikan mic jika perintah valid ditemukan
+        handleMenuClick(selectedMenu);
+      } 
+      else if (transcript.includes("ganti mode")) {
+        recognition.stop(); // Matikan mic untuk ganti mode
         speak("Mengubah mode", () => {
           onResetMode();
         });
+      } 
+      else {
+        // JIKA TIDAK ADA DI LIST:
+        // Sistem tidak bereaksi apa-apa dan mic tetap hidup (recognition.stop() TIDAK dipanggil)
+        console.log("Kata tidak dikenali, sistem diam dan tetap mendengarkan...");
+      }
+    };
+
+    recognition.onend = () => {
+      // Jika mikrofon terputus otomatis oleh browser karena tidak ada suara, 
+      // nyalakan kembali asalkan komponen belum di-unmount (recognitionRef.current masih ada)
+      if (recognitionRef.current) {
+        console.log("Mikrofon terputus, melakukan restart otomatis untuk standby...");
+        try {
+          recognitionRef.current.start();
+        } catch (e) {
+          console.error("Gagal restart mic:", e);
+        }
+      } else {
+        setIsListening(false);
       }
     };
 
     recognition.onerror = (event) => {
       console.log("Speech recognition error:", event.error);
-      if (mode === 'tuna_netra') {
-        setTimeout(() => recognition.start(), 1000);
-      }
+      // Biarkan onend yang menangani auto-restart jika terjadi error
     };
 
     recognition.start();
@@ -117,29 +137,27 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        const rec = recognitionRef.current;
+        recognitionRef.current = null; // Kosongkan ref terlebih dahulu agar onend tidak me-restart
+        rec.stop();
         setIsListening(false);
       }
     };
   }, [mode]);
 
   useEffect(() => {
-  
     if (mode === 'tuna_netra') {
-
       const introText = "Anda berada di halaman utama. Berikut menu-menu yang tersedia.";
       
       speak(introText, () => {
-
         const allMenuText = menuItems
           .map(item => `${item.title}. ${item.subtitle}`)
           .join('. ');
         
         speak(allMenuText, () => {
-          // Setelah membaca semua menu, tanyakan untuk memilih
           const promptText = "Silakan katakan nama menu yang ingin Anda buka. Anda dapat memilih Panduan, Cerita, Film, Game, atau Studi Kasus.";
           speak(promptText, () => {
-            // Setelah membaca semua menu, mulai mendengarkan
+            // Setelah selesai membaca panduan, baru mulai mendengarkan
             startListening();
           });
         });
@@ -147,17 +165,16 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
     }
   }, [mode]);
 
-const handleMenuClick = (menu) => {
-
-  if (menu.id === 'cerita') {
-    speak(`Membuka ${menu.title}`, () => {
-      onNavigate('cerita');
-    });
-  } else {
-    speak(`Membuka ${menu.title}`);
-    alert(`Fitur ${menu.title} akan segera hadir!`);
-  }
-};
+  const handleMenuClick = (menu) => {
+    if (menu.id === 'cerita') {
+      speak(`Membuka ${menu.title}`, () => {
+        onNavigate('cerita');
+      });
+    } else {
+      speak(`Membuka ${menu.title}`);
+      alert(`Fitur ${menu.title} akan segera hadir!`);
+    }
+  };
 
   return (
     <main className="min-h-screen flex flex-col p-4 sm:p-8 animate-in fade-in duration-700 max-w-6xl mx-auto">
@@ -216,7 +233,6 @@ const handleMenuClick = (menu) => {
               {menu.icon}
             </div>
             
-
             <div className="text-center sm:text-left flex-1">
               <h2 className="text-2xl sm:text-3xl font-extrabold mb-1 sm:mb-2 leading-tight">
                 {menu.title}
