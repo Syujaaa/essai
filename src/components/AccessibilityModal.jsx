@@ -7,6 +7,38 @@ export default function AccessibilityModal({ onSelectMode }) {
   const [hasInteracted, setHasInteracted] = useState(false);
   const recognitionRef = useRef(null);
 
+  const playMicOnSound = () => {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    
+    const ctx = new AudioContext();
+
+    const playTone = (frequency, startTime, duration) => {
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      oscillator.type = 'sine'; 
+      oscillator.frequency.value = frequency;
+
+    
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration);
+    };
+
+    const now = ctx.currentTime;
+    
+    playTone(600, now, 0.15);      
+    playTone(850, now + 0.15, 0.25);  
+  };
+  
+
   const options = [
     { id: 'tuna_netra', label: 'Tuna Netra', icon: '👁️', color: 'bg-blue-100 text-blue-900', desc: 'Navigasi Suara' },
     { id: 'tuna_rungu', label: 'Tuna Rungu', icon: '👂', color: 'bg-teal-100 text-teal-900', desc: 'Visual & Teks' },
@@ -41,7 +73,9 @@ export default function AccessibilityModal({ onSelectMode }) {
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onstart = () => setIsListening(true);
+    recognition.onstart = () => 
+      {setIsListening(true);
+       playMicOnSound(); console.log("Mikrofon aktif, silakan bicara...");};
 
     recognition.onresult = (event) => {
       const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
@@ -62,10 +96,15 @@ export default function AccessibilityModal({ onSelectMode }) {
     recognition.start();
   };
 
-  const handleSelect = (id) => {
+const handleSelect = (id) => {
     const selected = options.find(opt => opt.id === id);
-    speak(`Mode ${selected.label} dipilih. Memuat halaman.`, () => {
-      if (recognitionRef.current) recognitionRef.current.stop();
+    
+    if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        setIsListening(false);
+    }
+
+    speak(`Mode ${selected.label} dipilih.`, () => {
       setIsOpen(false);
       onSelectMode(id);
     });
@@ -74,12 +113,13 @@ export default function AccessibilityModal({ onSelectMode }) {
   const activateSystem = () => {
     if (!hasInteracted) {
       setHasInteracted(true);
-      const introText = "Halo, selamat datang. Silakan sebutkan atau klik pilihan kebutuhan Anda. Ada Tuna Netra, Tuna Rungu, Tuna Grahita, Autis, dan Tuna Daksa.";
-      speak(introText);
-      startListening();
+      const introText = "Halo, selamat datang. hkan sebutkan atau klik pilihan kebutuhan Anda. Ada Tuna Netra, Tuna Rungu, Tuna Grahita, Autis, dan Tuna Daksa.";
+      
+      speak(introText, () => {
+        startListening();
+      });
     }
   };
-
   return (
     <>
       {isOpen && (

@@ -7,6 +7,65 @@ export default function StoryPage({ mode, onBack }) {
 
   const lineRefs = useRef([]);
 
+  const isReadingRef = useRef(false); 
+  const recognitionRef = useRef(null);
+  const isListeningRef = useRef(false);
+  const isIntentionalStop = useRef(false); // Penanda saat kita sengaja mematikan mic (misal: kembali ke menu)
+
+  // Fungsi untuk menjaga state dan ref tetap sinkron agar terhindar dari Stale Closure
+  const setListeningState = (state) => {
+    setIsListening(state);
+    isListeningRef.current = state;
+  };
+
+  const setReadingState = (state) => {
+    setIsReading(state);
+    isReadingRef.current = state;
+  };
+
+  // Fungsi pembersih khusus saat tombol kembali ditekan
+  const handleBack = () => {
+    isIntentionalStop.current = true; // Cegah mic merestart dirinya sendiri
+    window.speechSynthesis.cancel();
+    
+    if (recognitionRef.current) {
+      recognitionRef.current.onend = null; 
+      try { recognitionRef.current.stop(); } catch (e) {}
+    }
+    setListeningState(false);
+    onBack();
+  };
+
+  const playMicOnSound = () => {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    
+    const ctx = new AudioContext();
+
+    const playTone = (frequency, startTime, duration) => {
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
+
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration);
+    };
+
+    const now = ctx.currentTime;
+    
+    playTone(600, now, 0.15);        
+    playTone(850, now + 0.15, 0.25);  
+  };
+
   const storyTitle = "Ksatria Kancil dan Perisai Cahaya";
   const storyContent = [
     "Di Hutan Awan Berkilau, Kancil terpilih menjadi Ksatria Penjaga! Ia diberi misi rahasia yang sangat penting.",
@@ -35,72 +94,79 @@ export default function StoryPage({ mode, onBack }) {
     window.speechSynthesis.speak(utterance);
   };
 
- const startListening = () => {
-  if (mode === 'tuna_rungu') return;
-  
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) return;
+  const startListening = () => {
+    if (mode === 'tuna_rungu') return;
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
 
-  const recognition = new SpeechRecognition();
-  recognition.lang = 'id-ID'; 
-  recognition.continuous = true; 
-  recognition.interimResults = false;
-
-  recognition.onstart = () => {
-    setIsListening(true);
-    console.log("Mikrofon aktif, menunggu perintah...");
-  };
-
-  recognition.onresult = (event) => {
-    const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
-    console.log("Kata tertangkap:", transcript);
-
-  
-    if (transcript.includes('lagi') || transcript.includes('baca')) {
-      console.log("Perintah cocok: Baca Lagi");
-      recognition.stop(); 
-      playSequentialStory(0);
-    } 
-  
-    else if (transcript.includes('kembali') || transcript.includes('menu') || transcript.includes('utama')) {
-      console.log("Perintah cocok: Kembali");
-      recognition.stop(); 
-      window.speechSynthesis.cancel();
-      onBack();
+    if (recognitionRef.current) {
+      recognitionRef.current.onend = null; 
+      try { recognitionRef.current.stop(); } catch(e){}
     }
-   
-    else {
-      console.log("Kata tidak dikenali, sistem diam dan tetap mendengarkan...");
-      
-    }
-  };
 
-  recognition.onend = () => {
-  
-    if (!isReading && mode !== 'tuna_rungu') {
-      console.log("Restarting microphone untuk standby...");
-      try {
-        recognition.start();
-      } catch (e) {
-        console.error("Gagal restart mic:", e);
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.lang = 'id-ID'; 
+    recognition.continuous = true; 
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      setListeningState(true);
+      isIntentionalStop.current = false; // Reset penanda saat mic mulai
+      playMicOnSound();
+      console.log("Mikrofon aktif, silakan bicara...");
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+      console.log("Kata tertangkap:", transcript);
+
+      if (transcript.includes('lagi') || transcript.includes('baca')) {
+        console.log("Perintah cocok: Baca Lagi");
+        isIntentionalStop.current = true;
+        recognition.stop(); 
+        playSequentialStory(0);
+      } 
+      else if (transcript.includes('kembali') || transcript.includes('menu') || transcript.includes('utama')) {
+        console.log("Perintah cocok: Kembali");
+        handleBack(); // Gunakan handleBack agar mic mati sempurna
       }
-    } else {
-      setIsListening(false);
+      else {
+        console.log("Kata tidak dikenali, sistem diam dan tetap mendengarkan...");
+      }
+    };
+
+    recognition.onend = () => {
+      // Pastikan bukan karena sengaja dimatikan (unmount/pindah menu) dan tidak sedang membaca
+      if (!isIntentionalStop.current && !isReadingRef.current && mode !== 'tuna_rungu') {
+        console.log("Restarting microphone untuk standby...");
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error("Gagal restart mic:", e);
+        }
+      } else {
+        setListeningState(false);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Error mikrofon:", event.error);
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error("Gagal memulai mikrofon:", e);
     }
   };
-
-  recognition.onerror = (event) => {
-    console.error("Error mikrofon:", event.error);
-  };
-
-  recognition.start();
-};
 
   const playSequentialStory = (index = 0) => {
     if (mode === 'tuna_rungu') return;
 
     if (index >= storyContent.length) {
-      setIsReading(false);
+      setReadingState(false);
       setActiveIndex(-1);
 
       setTimeout(() => {
@@ -114,7 +180,7 @@ export default function StoryPage({ mode, onBack }) {
       return;
     }
 
-    setIsReading(true);
+    setReadingState(true);
     setActiveIndex(index);
 
     const textToSpeak =
@@ -137,13 +203,26 @@ export default function StoryPage({ mode, onBack }) {
         if (event.error === 'canceled' || event.error === 'interrupted') {
           return; 
         }
-        setIsReading(false);
+        setReadingState(false);
         setActiveIndex(-1);
       };
 
       window.speechSynthesis.speak(utterance);
     }, 200);
   };
+
+  // PEMUTUS SIKLUS: Matikan mikrofon secara paksa saat komponen ini tidak lagi ditampilkan
+  useEffect(() => {
+    return () => {
+      console.log("Unmounting StoryPage, memastikan mic mati...");
+      isIntentionalStop.current = true;
+      window.speechSynthesis.cancel();
+      if (recognitionRef.current) {
+        recognitionRef.current.onend = null;
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (activeIndex >= 0 && lineRefs.current[activeIndex]) {
@@ -173,14 +252,9 @@ export default function StoryPage({ mode, onBack }) {
             className={`text-3xl sm:text-5xl font-black text-emerald-900 mb-10 text-center transition-all duration-500 p-4 sm:p-6 rounded-2xl outline-none
               ${activeIndex === 0 
                 ? 'bg-emerald-200 shadow-lg scale-105 border-2 border-emerald-400' 
-                : 'focus:bg-emerald-100 focus:ring-4 focus:ring-emerald-300'
+                : ''
               }
             `}
-            tabIndex="0"
-            onFocus={() => {
-              setActiveIndex(-1);
-              speakUI(`Judul cerita. ${storyTitle}`);
-            }}
           >
             {storyTitle}
           </h1>
@@ -193,14 +267,9 @@ export default function StoryPage({ mode, onBack }) {
                 className={`text-xl sm:text-3xl text-emerald-800 leading-relaxed font-medium p-4 sm:p-6 rounded-2xl transition-all duration-700 outline-none
                   ${activeIndex === index 
                     ? 'bg-emerald-200 shadow-lg scale-105 border-2 border-emerald-400' 
-                    : 'focus:bg-emerald-100 focus:ring-4 focus:ring-emerald-300'
+                    : ''
                   }
                 `}
-                tabIndex="0"
-                onFocus={() => {
-                  setActiveIndex(-1);
-                  speakUI(para);
-                }}
               >
                 {para}
               </p>
@@ -210,7 +279,6 @@ export default function StoryPage({ mode, onBack }) {
 
         <div className="mt-12 flex flex-col items-center min-h-[64px]">
           
-          {/* Animasi Mikrofon */}
           {isListening && mode !== 'tuna_rungu' && (
             <div className="mb-6 flex justify-center items-center gap-3 text-green-600">
               <div className="flex gap-1">
@@ -221,21 +289,23 @@ export default function StoryPage({ mode, onBack }) {
               <span className="text-sm sm:text-base font-bold tracking-widest uppercase">Mikrofon Aktif</span>
             </div>
           )}
-
           
           {!isReading && mode !== 'tuna_rungu' ? (
             <div className="flex gap-4 w-full justify-center animate-in slide-in-from-bottom-4 duration-500">
               <button 
-                onClick={() => playSequentialStory(0)}
+                onClick={() => {
+                  isIntentionalStop.current = true;
+                  if (recognitionRef.current) {
+                    try { recognitionRef.current.stop(); } catch(e){}
+                  }
+                  playSequentialStory(0);
+                }}
                 className="px-8 py-4 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold text-lg sm:text-xl rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 focus:ring-4 focus:ring-yellow-600"
               >
                 🔄 Bacakan Lagi
               </button>
               <button 
-                onClick={() => {
-                  window.speechSynthesis.cancel();
-                  onBack();
-                }}
+                onClick={handleBack}
                 className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg sm:text-xl rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 focus:ring-4 focus:ring-emerald-300"
               >
                 🏠 Kembali Menu
@@ -246,7 +316,7 @@ export default function StoryPage({ mode, onBack }) {
           {!isReading && mode === 'tuna_rungu' ? (
             <div className="flex gap-4 w-full justify-center animate-in slide-in-from-bottom-4 duration-500">
               <button 
-                onClick={() => onBack()}
+                onClick={handleBack}
                 className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg sm:text-xl rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 focus:ring-4 focus:ring-emerald-300"
               >
                 🏠 Kembali Menu
