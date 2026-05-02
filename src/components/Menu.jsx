@@ -202,7 +202,13 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
       speak(`Membuka ${menu.title}`, () => {
         onNavigate('cerita');
       });
-    } else {
+    } 
+    else if (menu.id === 'game') {
+      speak(`Membuka ${menu.title}`, () => {
+        onNavigate('game');
+      });
+    } 
+    else {
       speak(`Membuka ${menu.title}`, () => {
         alert(`Fitur ${menu.title} akan segera hadir!`);
         startListening(); 

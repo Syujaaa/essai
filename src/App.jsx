@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import AccessibilityModal from './components/AccessibilityModal';
 import Menu from './components/Menu';
 import StoryPage from './components/StoryPage'; 
+import GamePage from './components/Game';
 
 function App() {
   const [mode, setMode] = useState(null);
@@ -22,6 +23,12 @@ function App() {
 
       {mode && activePage === 'cerita' && (
         <StoryPage 
+          mode={mode} 
+          onBack={() => setActivePage('home')} 
+        />
+      )}
+      {mode && activePage === 'game' && (
+        <GamePage 
           mode={mode} 
           onBack={() => setActivePage('home')} 
         />
