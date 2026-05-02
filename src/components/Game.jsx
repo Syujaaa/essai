@@ -171,7 +171,7 @@ export default function GamePage({ mode, onBack }) {
         isIntentionalStopRef.current = true;
         setActiveGame('puzzle');
       } else {
-        speakUI("Maaf tidak terdengar. Ucapkan Kartu atau Puzzle.", () => startListening('menu'));
+        speakUI("Maaf tidak terdengar. Ucapkan Kartu atau Pazzle atau Kembali.", () => startListening('menu'));
       }
     }
   };
