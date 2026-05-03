@@ -113,7 +113,7 @@ const handleSelect = (id) => {
   const activateSystem = () => {
     if (!hasInteracted) {
       setHasInteracted(true);
-      const introText = "Halo, selamat datang. hkan sebutkan atau klik pilihan kebutuhan Anda. Ada Tuna Netra, Tuna Rungu, Tuna Grahita, Autis, dan Tuna Daksa.";
+      const introText = "Halo, selamat datang. silakan sebutkan atau klik pilihan kebutuhan Anda. Ada Tuna Netra, Tuna Rungu, Tuna Grahita, Autis, dan Tuna Daksa.";
       
       speak(introText, () => {
         startListening();
