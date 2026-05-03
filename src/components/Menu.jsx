@@ -116,7 +116,7 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
     },
     {
       id: "studi_kasus",
-      title: isSimpleMode ? "Ayo Berlatih" : "Studi Kasus Edukatif",
+      title:  "Studi Kasus Edukatif",
       subtitle: isSimpleMode
         ? "Semua anak istimewa, semua bisa jadi juara!"
         : "Menemukan Potensi dan Meraih Prestasi Gemilang",
