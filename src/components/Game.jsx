@@ -14,6 +14,9 @@ export default function GamePage({ mode, onBack }) {
   const isSystemSpeakingRef = useRef(false);
   const isIntentionalStopRef = useRef(false);
 
+  // PERBAIKAN: Gabungkan tuna_netra dan tuna_daksa untuk akses mikrofon & suara
+  const useVoiceControl = mode === 'tuna_netra' || mode === 'tuna_daksa';
+
   const setListeningState = (state) => {
     setIsListening(state);
     isListeningRef.current = state;
@@ -50,8 +53,8 @@ export default function GamePage({ mode, onBack }) {
   };
 
   const speakUI = (text, onFinish) => {
-    // PERBAIKAN: Jika bukan mode tuna netra, matikan suara.
-    if (mode !== 'tuna_netra') {
+    // PERBAIKAN: Gunakan variabel useVoiceControl
+    if (!useVoiceControl) {
       if (onFinish) {
         // Beri jeda 1.5 detik agar pop-up "Benar/Salah" bisa terbaca oleh user sebelum pindah state
         setTimeout(onFinish, 1500); 
@@ -78,8 +81,8 @@ export default function GamePage({ mode, onBack }) {
   };
 
   const startListening = (contextOverride, isAutoRestart = false) => {
-    // Pastikan mic HANYA jalan untuk mode tuna_netra
-    if (mode !== 'tuna_netra' || isSystemSpeakingRef.current || isListeningRef.current) return;
+    // PERBAIKAN: Gunakan variabel useVoiceControl
+    if (!useVoiceControl || isSystemSpeakingRef.current || isListeningRef.current) return;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -122,7 +125,8 @@ export default function GamePage({ mode, onBack }) {
 
     recognition.onend = () => {
       setListeningState(false);
-      if (!isIntentionalStopRef.current && mode === 'tuna_netra' && !isSystemSpeakingRef.current) {
+      // PERBAIKAN: Gunakan variabel useVoiceControl
+      if (!isIntentionalStopRef.current && useVoiceControl && !isSystemSpeakingRef.current) {
         console.log("Mic hening/terputus, mengembalikan ke standby...");
         setTimeout(() => {
           startListening(contextOverride, true); 
@@ -179,9 +183,10 @@ export default function GamePage({ mode, onBack }) {
   useEffect(() => {
     if (activeGame === null) {
       setVoiceContext('menu');
-      // Hanya mulai ngomong dan buka mic jika mode tuna netra
-      if (mode === 'tuna_netra') {
-        speakUI("Pilih permainan. Ucapkan Game Kartu, atau Puzzle Tubuh. Jika ingin keluar, ucapkan Kembali.", () => startListening('menu'));
+      
+      // PERBAIKAN: Narasi otomatis untuk tuna netra & tuna daksa
+      if (useVoiceControl) {
+        speakUI("Pilih permainan. Ucapkan Game Kartu, atau Pazel Tubuh. Jika ingin keluar, ucapkan Kembali.", () => startListening('menu'));
       }
     }
     // eslint-disable-next-line
@@ -201,7 +206,8 @@ export default function GamePage({ mode, onBack }) {
 
   const MicIndicator = () => (
     <div className="h-8 my-4 flex justify-center items-center">
-      {isListening && mode === 'tuna_netra' && (
+      {/* PERBAIKAN: Gunakan useVoiceControl agar indikator muncul untuk tuna daksa */}
+      {isListening && useVoiceControl && (
         <div className="flex gap-2 items-center text-green-600 bg-green-100 px-4 py-2 rounded-full">
           <div className="flex gap-1">
             <div className="w-1.5 h-3 bg-green-500 animate-bounce"></div>
@@ -221,16 +227,26 @@ export default function GamePage({ mode, onBack }) {
           <h1 className="text-4xl sm:text-5xl font-black text-rose-900 mb-6">🎮 Pilih Permainan</h1>
           <MicIndicator />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <button onClick={() => setActiveGame('kartu')} className="bg-white p-10 rounded-3xl border-b-8 border-rose-300 shadow-lg active:scale-95 transition-transform">
+            {/* PERBAIKAN: Tambahkan focus:ring untuk visibilitas navigasi keyboard tuna daksa */}
+            <button 
+              onClick={() => setActiveGame('kartu')} 
+              className="bg-white p-10 rounded-3xl border-b-8 border-rose-300 shadow-lg active:scale-95 transition-transform outline-none focus:ring-8 focus:ring-rose-200"
+            >
               <div className="text-7xl mb-4">🃏</div>
               <h2 className="text-2xl font-bold text-rose-800">Game Kartu</h2>
             </button>
-            <button onClick={() => setActiveGame('puzzle')} className="bg-white p-10 rounded-3xl border-b-8 border-cyan-300 shadow-lg active:scale-95 transition-transform">
+            <button 
+              onClick={() => setActiveGame('puzzle')} 
+              className="bg-white p-10 rounded-3xl border-b-8 border-cyan-300 shadow-lg active:scale-95 transition-transform outline-none focus:ring-8 focus:ring-cyan-200"
+            >
               <div className="text-7xl mb-4">🧩</div>
               <h2 className="text-2xl font-bold text-cyan-800">Puzzle Tubuh</h2>
             </button>
           </div>
-          <button onClick={() => { window.speechSynthesis.cancel(); onBack(); }} className="mt-12 px-8 py-4 bg-slate-400 text-white font-bold text-xl rounded-full shadow-lg active:scale-95 transition-transform">
+          <button 
+            onClick={() => { window.speechSynthesis.cancel(); onBack(); }} 
+            className="mt-12 px-8 py-4 bg-slate-400 text-white font-bold text-xl rounded-full shadow-lg active:scale-95 transition-transform outline-none focus:ring-4 focus:ring-slate-300"
+          >
             🏠 Kembali ke Menu
           </button>
         </div>

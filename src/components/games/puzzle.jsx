@@ -25,7 +25,7 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
     setPlacedPieces([]);
     setPuzzleWon(false);
     setShowError(false);
-    speakUI("Game Puzzle dimulai. Susun tubuh dari atas ke bawah. Sebutkan, Kepala, Badan, atau Kaki?", () => startListening('puzzle'));
+    speakUI("Game Pazel dimulai. Susun tubuh dari atas ke bawah. Sebutkan, Kepala, Badan, atau Kaki?", () => startListening('puzzle'));
     
     return () => {
       isIntentionalStopRef.current = true;
@@ -120,7 +120,6 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
 
         <div className="flex flex-col sm:flex-row gap-10 items-center justify-center mt-4">
           
-          {/* Papan Puzzle */}
           <div className={`bg-white p-6 rounded-3xl border-4 ${showError ? 'border-red-400' : 'border-cyan-200'} flex flex-col gap-2 min-h-[350px] w-[200px] shadow-lg relative`}>
             
             {/* Overlay jika jawaban salah (Sangat berguna untuk tuna rungu) */}

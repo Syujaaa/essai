@@ -9,6 +9,10 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
   const isSystemSpeaking = useRef(false);
   const isIntentionalStop = useRef(false); 
 
+  // Penentuan tipe mode
+  const isSimpleMode = mode === 'tuna_grahita' || mode === 'autis';
+  const useVoiceControl = mode === 'tuna_netra' || mode === 'tuna_daksa'; // PERBAIKAN: Aktifkan untuk kedua mode ini
+
   // Fungsi sinkronisasi agar UI dan logika background selalu punya nilai yang sama
   const setListeningState = (state) => {
     setIsListening(state);
@@ -67,16 +71,46 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
   };
 
   const menuItems = [
-    { id: 'panduan', title: 'Buku Panduan', subtitle: 'Petunjuk penggunaan aplikasi', icon: '📖', color: 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200' },
-    { id: 'cerita', title: 'Buku Cerita', subtitle: 'Dongeng pencegahan pelecehan seksual', icon: '📚', color: 'bg-emerald-100 text-emerald-900 border-emerald-300 hover:bg-emerald-200' },
-    { id: 'film', title: 'Film Dongeng', subtitle: 'Edukasi Seksual (Audio Visual)', icon: '🎬', color: 'bg-purple-100 text-purple-900 border-purple-300 hover:bg-purple-200' },
-    { id: 'game', title: 'Game Edukasi', subtitle: 'Bermain sambil belajar perlindungan diri', icon: '🎮', color: 'bg-rose-100 text-rose-900 border-rose-300 hover:bg-rose-200' },
-    { id: 'studi_kasus', title: 'Studi Kasus Edukatif', subtitle: 'Belajar merespons situasi nyata & bahaya', icon: '💡', color: 'bg-cyan-100 text-cyan-900 border-cyan-300 hover:bg-cyan-200' },
+    { 
+      id: 'panduan', 
+      title: isSimpleMode ? 'Cara Pakai' : 'Buku Panduan', 
+      subtitle: isSimpleMode ? 'Belajar cara pakai aplikasi ini' : 'Petunjuk penggunaan aplikasi', 
+      icon: '📖', 
+      color: 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200' 
+    },
+    { 
+      id: 'cerita', 
+      title: isSimpleMode ? 'Baca Cerita' : 'Buku Cerita', 
+      subtitle: isSimpleMode ? 'Cerita anak hebat yang bisa jaga diri' : 'Dongeng pencegahan pelecehan seksual', 
+      icon: '📚', 
+      color: 'bg-emerald-100 text-emerald-900 border-emerald-300 hover:bg-emerald-200' 
+    },
+    { 
+      id: 'film', 
+      title: isSimpleMode ? 'Tonton Video' : 'Film Dongeng', 
+      subtitle: isSimpleMode ? 'Video seru tentang tubuh yang aman' : 'Edukasi Seksual (Audio Visual)', 
+      icon: '🎬', 
+      color: 'bg-purple-100 text-purple-900 border-purple-300 hover:bg-purple-200' 
+    },
+    { 
+      id: 'game', 
+      title: isSimpleMode ? 'Main Game' : 'Game Edukasi', 
+      subtitle: isSimpleMode ? 'Bermain jadi anak berani dan kuat' : 'Bermain sambil belajar perlindungan diri', 
+      icon: '🎮', 
+      color: 'bg-rose-100 text-rose-900 border-rose-300 hover:bg-rose-200' 
+    },
+    { 
+      id: 'studi_kasus', 
+      title: isSimpleMode ? 'Ayo Berlatih' : 'Studi Kasus Edukatif', 
+      subtitle: isSimpleMode ? 'Belajar berani bilang TIDAK' : 'Belajar merespons situasi nyata & bahaya', 
+      icon: '💡', 
+      color: 'bg-cyan-100 text-cyan-900 border-cyan-300 hover:bg-cyan-200' 
+    },
   ];
 
   const startListening = (isAutoRestart = false) => {
-    // Gunakan isListeningRef.current di sini agar selalu mendapat status terbaru
-    if (mode !== 'tuna_netra' || isSystemSpeaking.current || isListeningRef.current) return;
+    // PERBAIKAN: Gunakan variabel useVoiceControl
+    if (!useVoiceControl || isSystemSpeaking.current || isListeningRef.current) return;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -110,11 +144,11 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
 
       let selectedMenu = null;
       
-      if (transcript.includes("panduan")) selectedMenu = menuItems.find(m => m.id === 'panduan');
-      else if (transcript.includes("cerita")) selectedMenu = menuItems.find(m => m.id === 'cerita');
-      else if (transcript.includes("film")) selectedMenu = menuItems.find(m => m.id === 'film');
-      else if (transcript.includes("game")) selectedMenu = menuItems.find(m => m.id === 'game');
-      else if (transcript.includes("studi kasus") || transcript.includes("studi")) selectedMenu = menuItems.find(m => m.id === 'studi_kasus');
+      if (transcript.includes("panduan") || transcript.includes("cara pakai")) selectedMenu = menuItems.find(m => m.id === 'panduan');
+      else if (transcript.includes("cerita") || transcript.includes("baca")) selectedMenu = menuItems.find(m => m.id === 'cerita');
+      else if (transcript.includes("film") || transcript.includes("tonton") || transcript.includes("video")) selectedMenu = menuItems.find(m => m.id === 'film');
+      else if (transcript.includes("game") || transcript.includes("main")) selectedMenu = menuItems.find(m => m.id === 'game');
+      else if (transcript.includes("studi kasus") || transcript.includes("studi") || transcript.includes("latih") || transcript.includes("berlatih")) selectedMenu = menuItems.find(m => m.id === 'studi_kasus');
 
       if (selectedMenu) {
         isIntentionalStop.current = true; // Kita hentikan sengaja untuk menavigasi
@@ -131,9 +165,8 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
     recognition.onend = () => {
       setListeningState(false);
       
-      // Restart mikrofon secara diam-diam JIKA mic mati sendiri (misal hening) 
-      // dan narator sedang tidak berbicara.
-      if (!isIntentionalStop.current && mode === 'tuna_netra' && !isSystemSpeaking.current) {
+     
+      if (!isIntentionalStop.current && useVoiceControl && !isSystemSpeaking.current) {
         console.log("Mic hening/terputus, mengembalikan ke standby...");
         startListening(true); // Restart sebagai auto-restart (tanpa bunyi beep)
       }
@@ -167,7 +200,8 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
   }, []);
 
   useEffect(() => {
-    if (mode === 'tuna_netra') {
+    // PERBAIKAN: Jalankan pembuka suara otomatis untuk tuna netra & tuna daksa
+    if (useVoiceControl) {
       // Pastikan mic mati total saat memulai narasi baru
       isIntentionalStop.current = true;
       if (recognitionRef.current) {
@@ -175,9 +209,9 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
       }
       setListeningState(false);
 
-      const introText = "Anda berada di halaman utama. Berikut menu-menu yang tersedia.";
+      const introText = "Kamu berada di halaman utama. Berikut menu-menu yang tersedia.";
       const allMenuText = menuItems.map(item => `${item.title}. ${item.subtitle}`).join('. ');
-      const promptText = "Silakan katakan nama menu yang ingin Anda buka. Anda dapat memilih Panduan, Cerita, Film, Game, atau Studi Kasus.";
+      const promptText = "Silakan katakan nama menu yang ingin kamu buka. Kamu dapat memilih Panduan, Cerita, Film, Game, atau Studi Kasus.";
 
       // Rantai narasi: A -> B -> C -> Nyalakan Mic
       speak(introText, () => {
@@ -195,7 +229,8 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
       window.speechSynthesis.cancel();
       isIntentionalStop.current = true;
     };
-  }, [mode]);
+    // eslint-disable-next-line
+  }, [mode]); // Render ulang narasi saat mode berubah
 
   const handleMenuClick = (menu) => {
     if (menu.id === 'cerita') {
@@ -216,6 +251,8 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
     }
   };
 
+  const greetingText = isSimpleMode ? "Halo! Kamu mau pilih yang mana? ✨" : "Halo! Mau belajar apa hari ini? ✨";
+
   return (
     <main className="min-h-screen flex flex-col p-4 sm:p-8 animate-in fade-in duration-700 max-w-6xl mx-auto">
       
@@ -224,9 +261,10 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
           <h1 
             className="text-2xl sm:text-3xl font-black text-slate-800"
             tabIndex="0"
-            onFocus={() => mode !== 'tuna_rungu' && mode !== 'tuna_netra' && speak("Halo! Mau belajar apa hari ini?")}
+            // PERBAIKAN: Jangan baca onFocus/onMouseEnter jika sedang dalam useVoiceControl agar tidak tabrakan
+            onFocus={() => mode !== 'tuna_rungu' && !useVoiceControl && speak(greetingText)}
           >
-            Halo! Mau belajar apa hari ini? ✨
+            {greetingText}
           </h1>
           <p className="text-sm sm:text-base text-slate-500 font-medium mt-1">
             Mode aktif: <span className="text-blue-600 font-bold capitalize underline decoration-yellow-400 decoration-2">{mode.replace('_', ' ')}</span>
@@ -234,15 +272,16 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
         </div>
         <button 
           onClick={onResetMode}
-          onMouseEnter={() => mode !== 'tuna_rungu' && mode !== 'tuna_netra' && speak("Ganti Mode")}
-          onFocus={() => mode !== 'tuna_rungu' && mode !== 'tuna_netra' && speak("Tombol Ganti Mode")}
+          onMouseEnter={() => mode !== 'tuna_rungu' && !useVoiceControl && speak("Ganti Mode")}
+          onFocus={() => mode !== 'tuna_rungu' && !useVoiceControl && speak("Tombol Ganti Mode")}
           className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-transform active:scale-95 text-sm border-2 border-slate-200 w-full sm:w-auto focus:ring-4 focus:ring-blue-300"
         >
           ⚙️ Ganti Mode
         </button>
       </header>
 
-      {mode === 'tuna_netra' && isListening && (
+      {/* PERBAIKAN: Tampilkan indikator mikrofon untuk mode tuna_daksa juga */}
+      {useVoiceControl && isListening && (
         <div className="mb-6 flex justify-center items-center gap-3 text-green-600">
           <div className="flex gap-1">
             <div className="w-1 h-3 sm:h-4 bg-green-500 animate-bounce"></div>
@@ -258,8 +297,8 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
           <button
             key={menu.id}
             onClick={() => handleMenuClick(menu)}
-            onMouseEnter={() => mode !== 'tuna_netra' && mode !== 'tuna_rungu' && speak(`${menu.title}. ${menu.subtitle}`)}
-            onFocus={() => mode !== 'tuna_netra' && mode !== 'tuna_rungu' ? speak(`Menu ${menu.title}. ${menu.subtitle}`) : null}
+            onMouseEnter={() => !useVoiceControl && mode !== 'tuna_rungu' && speak(`${menu.title}. ${menu.subtitle}`)}
+            onFocus={() => !useVoiceControl && mode !== 'tuna_rungu' ? speak(`Menu ${menu.title}. ${menu.subtitle}`) : null}
             className={`group w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] flex flex-col sm:flex-row items-center sm:items-start p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border-b-[6px] sm:border-b-8 transition-all duration-300 hover:-translate-y-2 active:translate-y-1 active:border-b-2 shadow-sm hover:shadow-xl outline-none focus:ring-8 focus:ring-opacity-50 ${menu.color}`}
           >
             <div className="text-6xl sm:text-7xl mb-4 sm:mb-0 sm:mr-6 transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
