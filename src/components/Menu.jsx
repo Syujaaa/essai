@@ -50,7 +50,12 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
   };
 
   const speak = (text, onFinish) => {
-    window.speechSynthesis.cancel(); // Hentikan suara yang sedang berjalan
+    if (mode === "tuna_rungu") {
+      if (onFinish) onFinish();
+      return;
+    }
+
+    window.speechSynthesis.cancel();
 
     isSystemSpeaking.current = true;
     isIntentionalStop.current = true;
@@ -113,8 +118,8 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
       id: "studi_kasus",
       title: isSimpleMode ? "Ayo Berlatih" : "Studi Kasus Edukatif",
       subtitle: isSimpleMode
-        ? "Belajar berani bilang TIDAK"
-        : "Belajar merespons situasi nyata & bahaya",
+        ? "Semua anak istimewa, semua bisa jadi juara!"
+        : "Menemukan Potensi dan Meraih Prestasi Gemilang",
       icon: "💡",
       color: "bg-cyan-100 text-cyan-900 border-cyan-300 hover:bg-cyan-200",
     },
@@ -285,6 +290,10 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
     } else if (menu.id === "film") {
       speak(`Membuka ${menu.title}`, () => {
         onNavigate("film");
+      });
+    } else if (menu.id === "studi_kasus") {
+      speak(`Membuka ${menu.title}`, () => {
+        onNavigate("studi_kasus");
       });
     } else {
       speak(`Membuka ${menu.title}`, () => {
