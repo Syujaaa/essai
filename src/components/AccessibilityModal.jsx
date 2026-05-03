@@ -75,7 +75,7 @@ export default function AccessibilityModal({ onSelectMode }) {
 
     recognition.onstart = () => 
       {setIsListening(true);
-       playMicOnSound(); console.log("Mikrofon aktif, silakan bicara...");};
+       playMicOnSound(); console.log("Mikrofon aktif, silahkan bicara...");};
 
     recognition.onresult = (event) => {
       const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
