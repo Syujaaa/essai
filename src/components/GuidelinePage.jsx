@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
+import MicrophonePermissionModal from "./MicrophonePermissionModal";
+import { MicrophonePermissionHandler } from "../utils/microphonePermission";
 
 export default function GuidelinePage({ mode, onBack }) {
   const [activeSection, setActiveSection] = useState(0);
   const [isReading, setIsReading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [micPermissionError, setMicPermissionError] = useState(null);
 
   const recognitionRef = useRef(null);
   const isListeningRef = useRef(false);
@@ -140,7 +143,14 @@ export default function GuidelinePage({ mode, onBack }) {
 
     recognition.onerror = (event) => {
       console.log("Speech recognition error:", event.error);
-      if (event.error === "not-allowed") {
+      const permissionError = MicrophonePermissionHandler.getPermissionError(
+        event.error,
+      );
+
+      if (permissionError) {
+        setMicPermissionError(permissionError);
+        setListeningState(false);
+      } else if (event.error === "not-allowed") {
         setListeningState(false);
       }
     };
@@ -264,6 +274,20 @@ export default function GuidelinePage({ mode, onBack }) {
     }
     setListeningState(false);
     onBack();
+  };
+
+  // Handler untuk retry mikrofon setelah permission error
+  const handleRetryMicrophone = () => {
+    setMicPermissionError(null);
+    isIntentionalStopRef.current = false;
+    setTimeout(() => {
+      startListening();
+    }, 500);
+  };
+
+  // Handler untuk close modal permission error
+  const handleCloseMicPermissionModal = () => {
+    setMicPermissionError(null);
   };
 
   const guidelines = [
@@ -390,6 +414,18 @@ export default function GuidelinePage({ mode, onBack }) {
 
   return (
     <main className="min-h-screen bg-amber-50 p-4 sm:p-10 flex flex-col items-center">
+      {/* Modal Permission Error */}
+      {micPermissionError && (
+        <MicrophonePermissionModal
+          isOpen={!!micPermissionError}
+          title={micPermissionError.title}
+          message={micPermissionError.message}
+          actionText={micPermissionError.actionText}
+          onRetry={handleRetryMicrophone}
+          onClose={handleCloseMicPermissionModal}
+        />
+      )}
+
       <div className="max-w-4xl w-full pb-20">
         <div className="flex justify-start mb-6">
           <button
@@ -408,9 +444,7 @@ export default function GuidelinePage({ mode, onBack }) {
 
         <p className="text-center text-amber-600 font-medium mb-8 animate-pulse text-sm sm:text-base">
           {useVoiceControl ? (
-            <>
-              Sistem akan membacakan panduan secara otomatis hingga selesai.
-            </>
+            <>Sistem akan membacakan panduan secara otomatis hingga selesai.</>
           ) : (
             <>Gunakan tombol navigasi di bawah</>
           )}

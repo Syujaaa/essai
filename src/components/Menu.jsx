@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
+import MicrophonePermissionModal from "./MicrophonePermissionModal";
+import { MicrophonePermissionHandler } from "../utils/microphonePermission";
 
 export default function Menu({ mode, onResetMode, onNavigate }) {
   const [isListening, setIsListening] = useState(false);
+  const [micPermissionError, setMicPermissionError] = useState(null);
 
   // Refs untuk mengontrol mikrofon dan alur narasi
   const recognitionRef = useRef(null);
@@ -212,7 +215,15 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
 
     recognition.onerror = (event) => {
       console.log("Speech recognition error:", event.error);
-      if (event.error === "not-allowed") {
+      const permissionError = MicrophonePermissionHandler.getPermissionError(
+        event.error,
+      );
+
+      if (permissionError) {
+        setMicPermissionError(permissionError);
+        isIntentionalStop.current = true;
+        setListeningState(false);
+      } else if (event.error === "not-allowed") {
         isIntentionalStop.current = true;
       }
     };
@@ -238,6 +249,18 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
       window.speechSynthesis.cancel();
     };
   }, []);
+
+  // Handler untuk retry mikrofon setelah permission error
+  const handleRetryMicrophone = () => {
+    setMicPermissionError(null);
+    isIntentionalStop.current = false;
+    startListening();
+  };
+
+  // Handler untuk close modal permission error
+  const handleCloseMicPermissionModal = () => {
+    setMicPermissionError(null);
+  };
 
   useEffect(() => {
     // PERBAIKAN: Jalankan pembuka suara otomatis untuk tuna netra & tuna daksa
@@ -313,6 +336,18 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
 
   return (
     <main className="min-h-screen flex flex-col p-4 sm:p-8 animate-in fade-in duration-700 max-w-6xl mx-auto relative">
+      {/* Modal Permission Error */}
+      {micPermissionError && (
+        <MicrophonePermissionModal
+          isOpen={!!micPermissionError}
+          title={micPermissionError.title}
+          message={micPermissionError.message}
+          actionText={micPermissionError.actionText}
+          onRetry={handleRetryMicrophone}
+          onClose={handleCloseMicPermissionModal}
+        />
+      )}
+
       <header className="flex flex-col sm:flex-row items-center justify-between bg-white p-4 sm:p-6 rounded-3xl shadow-sm border-2 border-slate-100 mb-8 mt-4">
         <div className="text-center sm:text-left mb-4 sm:mb-0">
           <h1
@@ -395,8 +430,10 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
         ))}
       </div>
 
-
-      <div className="w-full text-center text-[10px] sm:text-xs text-slate-400 pointer-events-none mt-auto pt-8 pb-4" aria-hidden="true">
+      <div
+        className="w-full text-center text-[10px] sm:text-xs text-slate-400 pointer-events-none mt-auto pt-8 pb-4"
+        aria-hidden="true"
+      >
         <p className="font-bold">Credits</p>
         <p>Farras Syuja</p>
         <p>Marizka Dwi Cahyani</p>

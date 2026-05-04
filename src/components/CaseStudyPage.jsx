@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
+import MicrophonePermissionModal from "./MicrophonePermissionModal";
+import { MicrophonePermissionHandler } from "../utils/microphonePermission";
 
 export default function CaseStudyPage({ mode, onBack }) {
   const [isReading, setIsReading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isListening, setIsListening] = useState(false);
+  const [micPermissionError, setMicPermissionError] = useState(null);
 
   const recognitionRef = useRef(null);
   const isListeningRef = useRef(false);
@@ -207,7 +210,7 @@ export default function CaseStudyPage({ mode, onBack }) {
 
       // PERBAIKAN: Dihilangkan kondisi if (!isAutoRestart) agar ringtone SELALU bunyi setiap mic menyala
       playMicOnSound();
-      
+
       console.log("Mikrofon aktif, silahkan bicara...");
     };
 
@@ -242,6 +245,14 @@ export default function CaseStudyPage({ mode, onBack }) {
 
     recognition.onerror = (event) => {
       console.log("Speech recognition error:", event.error);
+      const permissionError = MicrophonePermissionHandler.getPermissionError(
+        event.error,
+      );
+
+      if (permissionError) {
+        setMicPermissionError(permissionError);
+        setListeningState(false);
+      }
     };
 
     try {
@@ -273,36 +284,21 @@ export default function CaseStudyPage({ mode, onBack }) {
     }
 
     if (activeIndex === -1) {
-      if (
-        transcript.includes("reno") ||
-        transcript.includes("satu")
-      ) {
+      if (transcript.includes("reno") || transcript.includes("satu")) {
         handleSelectStory(0);
-      } else if (
-        transcript.includes("sinta") ||
-        transcript.includes("dua")
-      ) {
+      } else if (transcript.includes("sinta") || transcript.includes("dua")) {
         handleSelectStory(1);
-      } else if (
-        transcript.includes("bunga") ||
-        transcript.includes("tiga")
-      ) {
+      } else if (transcript.includes("bunga") || transcript.includes("tiga")) {
         handleSelectStory(2);
-      } else if (
-        transcript.includes("ardi") ||
-        transcript.includes("empat")
-      ) {
+      } else if (transcript.includes("ardi") || transcript.includes("empat")) {
         handleSelectStory(3);
-      } else if (
-        transcript.includes("zara") ||
-        transcript.includes("lima")
-      ) {
+      } else if (transcript.includes("zara") || transcript.includes("lima")) {
         handleSelectStory(4);
       } else {
         if (mode !== "tuna_rungu") {
           speakUI(
             "Sebutkan nama tokoh yang ingin didengar: Reno, Sinta, Bunga, Ardi, atau Zara.",
-            () => startListening(true)
+            () => startListening(true),
           );
         } else {
           startListening(true);
@@ -314,10 +310,10 @@ export default function CaseStudyPage({ mode, onBack }) {
   const handleSelectStory = (index) => {
     setActiveIndex(index);
     setIsReading(true);
-    
+
     const fullStoryText = caseStudies[index].stories.join(" ");
     const fullText = `${caseStudies[index].title}. ${fullStoryText}`;
-    
+
     speakUI(fullText, () => {
       if (useVoiceControl && mode !== "tuna_rungu") {
         handleBackToMenu();
@@ -330,8 +326,9 @@ export default function CaseStudyPage({ mode, onBack }) {
   const handleBackToMenu = () => {
     setActiveIndex(-1);
     setIsReading(false);
-    speakUI("Ucapkan kembali untuk ke menu utama atau pilih cerita lagi. Sebutkan nama tokoh: Reno, Sinta, Bunga, Ardi, atau Zara.", () =>
-      startListening(true)
+    speakUI(
+      "Ucapkan kembali untuk ke menu utama atau pilih cerita lagi. Sebutkan nama tokoh: Reno, Sinta, Bunga, Ardi, atau Zara.",
+      () => startListening(true),
     );
   };
 
@@ -345,6 +342,20 @@ export default function CaseStudyPage({ mode, onBack }) {
     }
     setListeningState(false);
     onBack();
+  };
+
+  // Handler untuk retry mikrofon setelah permission error
+  const handleRetryMicrophone = () => {
+    setMicPermissionError(null);
+    isIntentionalStopRef.current = false;
+    setTimeout(() => {
+      startListening();
+    }, 500);
+  };
+
+  // Handler untuk close modal permission error
+  const handleCloseMicPermissionModal = () => {
+    setMicPermissionError(null);
   };
 
   useEffect(() => {
@@ -429,7 +440,7 @@ export default function CaseStudyPage({ mode, onBack }) {
                     {study.icon}
                   </div>
                   <h2 className="text-xl sm:text-2xl font-black mb-3">
-                    {study.title} 
+                    {study.title}
                   </h2>
                   <p className="text-sm sm:text-base opacity-80 leading-relaxed font-medium">
                     {study.stories[0]}
@@ -459,6 +470,18 @@ export default function CaseStudyPage({ mode, onBack }) {
 
   return (
     <main className="min-h-screen bg-white p-4 sm:p-10 flex flex-col items-center">
+      {/* Modal Permission Error */}
+      {micPermissionError && (
+        <MicrophonePermissionModal
+          isOpen={!!micPermissionError}
+          title={micPermissionError.title}
+          message={micPermissionError.message}
+          actionText={micPermissionError.actionText}
+          onRetry={handleRetryMicrophone}
+          onClose={handleCloseMicPermissionModal}
+        />
+      )}
+
       <div className="max-w-4xl w-full pb-20">
         <div
           className={`${currentStudy.color} p-8 sm:p-12 rounded-[40px] border-4 shadow-inner mt-4`}

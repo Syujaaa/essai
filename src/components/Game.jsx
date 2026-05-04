@@ -1,21 +1,24 @@
-import React, { useEffect, useState, useRef } from 'react';
-import Puzzle from './games/puzzle';
-import Kartu from './games/kartu';
+import React, { useEffect, useState, useRef } from "react";
+import Puzzle from "./games/puzzle";
+import Kartu from "./games/kartu";
+import MicrophonePermissionModal from "./MicrophonePermissionModal";
+import { MicrophonePermissionHandler } from "../utils/microphonePermission";
 
 export default function GamePage({ mode, onBack }) {
-  const [activeGame, setActiveGame] = useState(null); 
+  const [activeGame, setActiveGame] = useState(null);
   const [isListening, setIsListening] = useState(false);
-  const [voiceContext, setVoiceContext] = useState('menu'); 
-  
+  const [voiceContext, setVoiceContext] = useState("menu");
+  const [micPermissionError, setMicPermissionError] = useState(null);
+
   const [gameCommand, setGameCommand] = useState(null);
-  
+
   const recognitionRef = useRef(null);
   const isListeningRef = useRef(false);
   const isSystemSpeakingRef = useRef(false);
   const isIntentionalStopRef = useRef(false);
 
   // PERBAIKAN: Gabungkan tuna_netra dan tuna_daksa untuk akses mikrofon & suara
-  const useVoiceControl = mode === 'tuna_netra' || mode === 'tuna_daksa';
+  const useVoiceControl = mode === "tuna_netra" || mode === "tuna_daksa";
 
   const setListeningState = (state) => {
     setIsListening(state);
@@ -25,7 +28,7 @@ export default function GamePage({ mode, onBack }) {
   const playMicOnSound = () => {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
-    
+
     const ctx = new AudioContext();
 
     const playTone = (frequency, startTime, duration) => {
@@ -35,7 +38,7 @@ export default function GamePage({ mode, onBack }) {
       oscillator.connect(gainNode);
       gainNode.connect(ctx.destination);
 
-      oscillator.type = 'sine'; 
+      oscillator.type = "sine";
       oscillator.frequency.value = frequency;
 
       gainNode.gain.setValueAtTime(0, startTime);
@@ -47,9 +50,9 @@ export default function GamePage({ mode, onBack }) {
     };
 
     const now = ctx.currentTime;
-    
-    playTone(600, now, 0.15);      
-    playTone(850, now + 0.15, 0.25);  
+
+    playTone(600, now, 0.15);
+    playTone(850, now + 0.15, 0.25);
   };
 
   const speakUI = (text, onFinish) => {
@@ -57,24 +60,24 @@ export default function GamePage({ mode, onBack }) {
     if (!useVoiceControl) {
       if (onFinish) {
         // Beri jeda 1.5 detik agar pop-up "Benar/Salah" bisa terbaca oleh user sebelum pindah state
-        setTimeout(onFinish, 1500); 
+        setTimeout(onFinish, 1500);
       }
       return;
     }
 
     window.speechSynthesis.cancel();
-    
+
     isSystemSpeakingRef.current = true;
     isIntentionalStopRef.current = true;
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'id-ID';
-    
+    utterance.lang = "id-ID";
+
     utterance.onend = () => {
       isSystemSpeakingRef.current = false;
       if (onFinish) onFinish();
     };
-    
+
     setTimeout(() => {
       window.speechSynthesis.speak(utterance);
     }, 100);
@@ -82,30 +85,38 @@ export default function GamePage({ mode, onBack }) {
 
   const startListening = (contextOverride, isAutoRestart = false) => {
     // PERBAIKAN: Gunakan variabel useVoiceControl
-    if (!useVoiceControl || isSystemSpeakingRef.current || isListeningRef.current) return;
+    if (
+      !useVoiceControl ||
+      isSystemSpeakingRef.current ||
+      isListeningRef.current
+    )
+      return;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
     window.speechSynthesis.cancel();
 
     if (recognitionRef.current) {
-      recognitionRef.current.onend = null; 
-      try { recognitionRef.current.stop(); } catch(e){}
+      recognitionRef.current.onend = null;
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
     }
 
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
-    recognition.lang = 'id-ID';
+    recognition.lang = "id-ID";
     recognition.continuous = true;
     recognition.interimResults = false;
 
     recognition.onstart = () => {
       setListeningState(true);
       isIntentionalStopRef.current = false;
-      
+
       if (!isAutoRestart) {
-        playMicOnSound(); 
+        playMicOnSound();
       }
       console.log("Mikrofon aktif, narator diam, silakan bicara...");
     };
@@ -113,11 +124,14 @@ export default function GamePage({ mode, onBack }) {
     recognition.onresult = (event) => {
       if (isSystemSpeakingRef.current) return;
 
-      const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+      const transcript =
+        event.results[event.results.length - 1][0].transcript.toLowerCase();
       console.log("Input Suara:", transcript);
 
       isIntentionalStopRef.current = true;
-      try { recognition.stop(); } catch(e){}
+      try {
+        recognition.stop();
+      } catch (e) {}
       setListeningState(false);
 
       handleVoiceCommand(transcript, contextOverride || voiceContext);
@@ -126,17 +140,28 @@ export default function GamePage({ mode, onBack }) {
     recognition.onend = () => {
       setListeningState(false);
       // PERBAIKAN: Gunakan variabel useVoiceControl
-      if (!isIntentionalStopRef.current && useVoiceControl && !isSystemSpeakingRef.current) {
+      if (
+        !isIntentionalStopRef.current &&
+        useVoiceControl &&
+        !isSystemSpeakingRef.current
+      ) {
         console.log("Mic hening/terputus, mengembalikan ke standby...");
         setTimeout(() => {
-          startListening(contextOverride, true); 
+          startListening(contextOverride, true);
         }, 200);
       }
     };
 
     recognition.onerror = (event) => {
       console.log("Speech recognition error:", event.error);
-      if (event.error === 'not-allowed') {
+      const permissionError = MicrophonePermissionHandler.getPermissionError(
+        event.error,
+      );
+
+      if (permissionError) {
+        setMicPermissionError(permissionError);
+        isIntentionalStopRef.current = true;
+      } else if (event.error === "not-allowed") {
         isIntentionalStopRef.current = true;
       }
     };
@@ -149,44 +174,75 @@ export default function GamePage({ mode, onBack }) {
   };
 
   const handleVoiceCommand = (transcript, context) => {
-    if (transcript.includes('kembali') || transcript.includes('menu') || transcript.includes('utama')) {
+    if (
+      transcript.includes("kembali") ||
+      transcript.includes("menu") ||
+      transcript.includes("utama")
+    ) {
       isIntentionalStopRef.current = true;
       window.speechSynthesis.cancel();
-      
-      if (context === 'menu') {
+
+      if (context === "menu") {
         onBack();
       } else {
         setActiveGame(null);
-        setVoiceContext('menu');
+        setVoiceContext("menu");
       }
       return;
     }
 
     if (activeGame !== null) {
-      setGameCommand({ text: transcript, context: context, timestamp: Date.now() });
+      setGameCommand({
+        text: transcript,
+        context: context,
+        timestamp: Date.now(),
+      });
       return;
     }
 
-    if (context === 'menu') {
-      if (transcript.includes('kartu')) {
+    if (context === "menu") {
+      if (transcript.includes("kartu")) {
         isIntentionalStopRef.current = true;
-        setActiveGame('kartu');
-      } else if (transcript.includes('puzzle') || transcript.includes('pazel')) {
+        setActiveGame("kartu");
+      } else if (
+        transcript.includes("puzzle") ||
+        transcript.includes("pazel")
+      ) {
         isIntentionalStopRef.current = true;
-        setActiveGame('puzzle');
+        setActiveGame("puzzle");
       } else {
-        speakUI("Maaf tidak terdengar. Ucapkan Kartu atau Pazzle atau Kembali.", () => startListening('menu'));
+        speakUI(
+          "Maaf tidak terdengar. Ucapkan Kartu atau Pazzle atau Kembali.",
+          () => startListening("menu"),
+        );
       }
     }
   };
 
+  // Handler untuk retry mikrofon setelah permission error
+  const handleRetryMicrophone = () => {
+    setMicPermissionError(null);
+    isIntentionalStopRef.current = false;
+    setTimeout(() => {
+      startListening(voiceContext);
+    }, 500);
+  };
+
+  // Handler untuk close modal permission error
+  const handleCloseMicPermissionModal = () => {
+    setMicPermissionError(null);
+  };
+
   useEffect(() => {
     if (activeGame === null) {
-      setVoiceContext('menu');
-      
+      setVoiceContext("menu");
+
       // PERBAIKAN: Narasi otomatis untuk tuna netra & tuna daksa
       if (useVoiceControl) {
-        speakUI("Pilih permainan. Ucapkan Game Kartu, atau Pazel Tubuh. Jika ingin keluar, ucapkan Kembali.", () => startListening('menu'));
+        speakUI(
+          "Pilih permainan. Ucapkan Game Kartu, atau Pazel Tubuh. Jika ingin keluar, ucapkan Kembali.",
+          () => startListening("menu"),
+        );
       }
     }
     // eslint-disable-next-line
@@ -198,7 +254,9 @@ export default function GamePage({ mode, onBack }) {
       window.speechSynthesis.cancel();
       if (recognitionRef.current) {
         recognitionRef.current.onend = null;
-        try { recognitionRef.current.stop(); } catch(e) {}
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
       }
       setListeningState(false);
     };
@@ -214,7 +272,9 @@ export default function GamePage({ mode, onBack }) {
             <div className="w-1.5 h-5 bg-green-500 animate-bounce [animation-delay:0.2s]"></div>
             <div className="w-1.5 h-3 bg-green-500 animate-bounce [animation-delay:0.4s]"></div>
           </div>
-          <span className="text-sm font-bold tracking-widest uppercase">Mendengarkan...</span>
+          <span className="text-sm font-bold tracking-widest uppercase">
+            Mendengarkan...
+          </span>
         </div>
       )}
     </div>
@@ -223,28 +283,45 @@ export default function GamePage({ mode, onBack }) {
   if (activeGame === null) {
     return (
       <main className="min-h-screen bg-rose-50 p-4 sm:p-10 flex flex-col items-center">
+        {/* Modal Permission Error */}
+        {micPermissionError && (
+          <MicrophonePermissionModal
+            isOpen={!!micPermissionError}
+            title={micPermissionError.title}
+            message={micPermissionError.message}
+            actionText={micPermissionError.actionText}
+            onRetry={handleRetryMicrophone}
+            onClose={handleCloseMicPermissionModal}
+          />
+        )}
+
         <div className="max-w-4xl w-full text-center">
-          <h1 className="text-4xl sm:text-5xl font-black text-rose-900 mb-6">🎮 Pilih Permainan</h1>
+          <h1 className="text-4xl sm:text-5xl font-black text-rose-900 mb-6">
+            🎮 Pilih Permainan
+          </h1>
           <MicIndicator />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* PERBAIKAN: Tambahkan focus:ring untuk visibilitas navigasi keyboard tuna daksa */}
-            <button 
-              onClick={() => setActiveGame('kartu')} 
+            <button
+              onClick={() => setActiveGame("kartu")}
               className="bg-white p-10 rounded-3xl border-b-8 border-rose-300 shadow-lg active:scale-95 transition-transform outline-none focus:ring-8 focus:ring-rose-200"
             >
               <div className="text-7xl mb-4">🃏</div>
               <h2 className="text-2xl font-bold text-rose-800">Game Kartu</h2>
             </button>
-            <button 
-              onClick={() => setActiveGame('puzzle')} 
+            <button
+              onClick={() => setActiveGame("puzzle")}
               className="bg-white p-10 rounded-3xl border-b-8 border-cyan-300 shadow-lg active:scale-95 transition-transform outline-none focus:ring-8 focus:ring-cyan-200"
             >
               <div className="text-7xl mb-4">🧩</div>
               <h2 className="text-2xl font-bold text-cyan-800">Puzzle Tubuh</h2>
             </button>
           </div>
-          <button 
-            onClick={() => { window.speechSynthesis.cancel(); onBack(); }} 
+          <button
+            onClick={() => {
+              window.speechSynthesis.cancel();
+              onBack();
+            }}
             className="mt-12 px-8 py-4 bg-slate-400 text-white font-bold text-xl rounded-full shadow-lg active:scale-95 transition-transform outline-none focus:ring-4 focus:ring-slate-300"
           >
             🏠 Kembali ke Menu
@@ -255,11 +332,15 @@ export default function GamePage({ mode, onBack }) {
   }
 
   // Lempar prop `mode` ke children
-  if (activeGame === 'kartu') {
+  if (activeGame === "kartu") {
     return (
-      <Kartu 
+      <Kartu
         mode={mode}
-        onBack={() => { window.speechSynthesis.cancel(); setActiveGame(null); setVoiceContext('menu'); }}
+        onBack={() => {
+          window.speechSynthesis.cancel();
+          setActiveGame(null);
+          setVoiceContext("menu");
+        }}
         speakUI={speakUI}
         startListening={startListening}
         setVoiceContext={setVoiceContext}
@@ -269,16 +350,20 @@ export default function GamePage({ mode, onBack }) {
     );
   }
 
-  if (activeGame === 'puzzle') {
+  if (activeGame === "puzzle") {
     return (
-      <Puzzle 
+      <Puzzle
         mode={mode}
-        onBack={() => { window.speechSynthesis.cancel(); setActiveGame(null); setVoiceContext('menu'); }}
+        onBack={() => {
+          window.speechSynthesis.cancel();
+          setActiveGame(null);
+          setVoiceContext("menu");
+        }}
         speakUI={speakUI}
         startListening={startListening}
         setVoiceContext={setVoiceContext}
         MicIndicator={MicIndicator}
-        voiceCommand={gameCommand} 
+        voiceCommand={gameCommand}
       />
     );
   }
