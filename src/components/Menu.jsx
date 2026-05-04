@@ -367,11 +367,11 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
           <button
             key={menu.id}
             onClick={() => handleMenuClick(menu)}
-            onMouseEnter={() =>
-              !useVoiceControl &&
-              mode !== "tuna_rungu" &&
-              speak(`${menu.title}. ${menu.subtitle}`)
-            }
+            // onMouseEnter={() =>
+            //   !useVoiceControl &&
+            //   mode !== "tuna_rungu" &&
+            //   speak(`${menu.title}. ${menu.subtitle}`)
+            // }
             onFocus={() =>
               !useVoiceControl && mode !== "tuna_rungu"
                 ? speak(`Menu ${menu.title}. ${menu.subtitle}`)
