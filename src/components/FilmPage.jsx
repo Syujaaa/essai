@@ -1,54 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 
 export default function FilmPage({ mode, onBack }) {
-  const [isListening, setIsListening] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const videoRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const isListeningRef = useRef(false);
   const isSystemSpeakingRef = useRef(false);
   const isIntentionalStopRef = useRef(false);
 
   const isSimpleMode = mode === "tuna_grahita" || mode === "autis";
-  const useVoiceControl = mode === "tuna_netra" || mode === "tuna_daksa";
-
-  const setListeningState = (state) => {
-    setIsListening(state);
-    isListeningRef.current = state;
-  };
-
-  const playMicOnSound = () => {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-
-    const ctx = new AudioContext();
-
-    const playTone = (frequency, startTime, duration) => {
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      oscillator.type = "sine";
-      oscillator.frequency.value = frequency;
-
-      gainNode.gain.setValueAtTime(0, startTime);
-      gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-
-      oscillator.start(startTime);
-      oscillator.stop(startTime + duration);
-    };
-
-    const now = ctx.currentTime;
-    playTone(600, now, 0.15);
-    playTone(850, now + 0.15, 0.25);
-  };
+  // Mengubah nama variabel karena kontrol suara (mikrofon) dimatikan, sisa naratornya saja
+  const useNarrator = mode === "tuna_netra" || mode === "tuna_daksa";
 
   const speakUI = (text, onFinish) => {
-    if (!useVoiceControl) {
+    if (!useNarrator) {
       if (onFinish) {
         setTimeout(onFinish, 1500);
       }
@@ -73,131 +37,13 @@ export default function FilmPage({ mode, onBack }) {
     }, 100);
   };
 
-  const startListening = (isAutoRestart = false) => {
-    if (
-      !useVoiceControl ||
-      isSystemSpeakingRef.current ||
-      isListeningRef.current
-    )
-      return;
-
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    window.speechSynthesis.cancel();
-
-    if (recognitionRef.current) {
-      recognitionRef.current.onend = null;
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-    }
-
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    recognition.lang = "id-ID";
-    recognition.continuous = true;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => {
-      setListeningState(true);
-      isIntentionalStopRef.current = false;
-
-      // CEK: Apakah video sedang diputar?
-      const isVideoPlaying = videoRef.current && !videoRef.current.paused;
-
-      // Jika video sedang main, JANGAN bunyikan beep agar tidak merebut fokus audio di HP
-      if (!isAutoRestart && !isVideoPlaying) {
-        playMicOnSound();
-      }
-      console.log("Mikrofon aktif, silakan bicara...");
-    };
-
-    recognition.onresult = (event) => {
-      if (isSystemSpeakingRef.current) return;
-
-      const transcript =
-        event.results[event.results.length - 1][0].transcript.toLowerCase();
-      console.log("Input Suara:", transcript);
-
-      isIntentionalStopRef.current = true;
-      try {
-        recognition.stop();
-      } catch (e) {}
-      setListeningState(false);
-
-      if (
-        transcript.includes("putar") ||
-        transcript.includes("mainkan") ||
-        transcript.includes("play")
-      ) {
-        handlePlay();
-      } else if (
-        transcript.includes("pause") ||
-        transcript.includes("henti") ||
-        transcript.includes("paus") ||
-        transcript.includes("berhenti")
-      ) {
-        handlePause();
-      } else if (
-        transcript.includes("kembali") ||
-        transcript.includes("menu") ||
-        transcript.includes("utama")
-      ) {
-        isIntentionalStopRef.current = true;
-        window.speechSynthesis.cancel();
-        onBack();
-      } else {
-        speakUI(
-          isSimpleMode
-            ? "Ucapkan Putar, Henti, atau Kembali."
-            : "Ucapkan Putar, Pause, atau Kembali.",
-          () => startListening()
-        );
-      }
-    };
-
-    recognition.onend = () => {
-      setListeningState(false);
-      if (
-        !isIntentionalStopRef.current &&
-        useVoiceControl &&
-        !isSystemSpeakingRef.current
-      ) {
-        console.log("Mic hening/terputus, mengembalikan ke standby...");
-        setTimeout(() => {
-          startListening(true);
-        }, 200);
-      }
-    };
-
-    recognition.onerror = (event) => {
-      console.log("Speech recognition error:", event.error);
-      if (event.error === "not-allowed") {
-        isIntentionalStopRef.current = true;
-      }
-    };
-
-    try {
-      recognition.start();
-    } catch (e) {
-      console.error("Gagal start mic:", e);
-    }
-  };
-
   const handlePlay = () => {
     if (videoRef.current) {
       setIsPlaying(true);
-      // Biarkan UI berbicara DULU sampai selesai...
       speakUI(
         isSimpleMode ? "Video diputar." : "Video sedang diputar.",
         () => {
-          // ...BARU video di-play setelah suara sistem mati.
-          // Ini mencegah suara sistem merebut paksa audio dari video di HP.
           videoRef.current.play().catch((e) => console.error("Play error:", e));
-          // Start mikrofon lagi secara "silent" (tanpa beep)
-          startListening(true); 
         }
       );
     }
@@ -207,75 +53,61 @@ export default function FilmPage({ mode, onBack }) {
     if (videoRef.current) {
       videoRef.current.pause();
       setIsPlaying(false);
-      speakUI(isSimpleMode ? "Video dihentikan." : "Video dijeda.", () =>
-        startListening()
-      );
+      speakUI(isSimpleMode ? "Video dihentikan." : "Video dijeda.");
     }
   };
 
   const handleVideoEnd = () => {
     setIsPlaying(false);
-    speakUI(
-      isSimpleMode
-        ? "Video selesai. Ucapkan Putar untuk menonton lagi atau Kembali ke menu."
-        : "Video selesai. Ucapkan Putar untuk menonton lagi atau Kembali.",
-      () => startListening()
-    );
+    
+    // Jika mode tuna netra/daksa, narator bicara lalu OTOMATIS kembali ke menu
+    if (useNarrator) {
+      speakUI(
+        "Video selesai. Mengembalikan ke menu utama.",
+        () => {
+          onBack(); // Langsung pindah ke menu setelah narator selesai bicara
+        }
+      );
+    } else {
+      // Untuk mode lain (autis/tuna rungu/tuna grahita), diam di tempat atau opsi lain
+      speakUI("Video selesai.");
+    }
+  };
+
+  // Sinkronisasi status play/pause dari native controls kursor ke state aplikasi
+  const handleNativePlayPause = () => {
+    if (videoRef.current) {
+      setIsPlaying(!videoRef.current.paused);
+    }
   };
 
   useEffect(() => {
-    const shouldAutoPlay = mode !== "tuna_netra" && mode !== "tuna_daksa";
-
-    if (shouldAutoPlay && videoRef.current) {
+    // Autoplay diaktifkan untuk SEMUA mode
+    if (videoRef.current) {
       const autoplayTimer = setTimeout(() => {
-        videoRef.current?.play().catch((err) => {
-          console.log("Autoplay failed:", err);
+        videoRef.current?.play().then(() => {
+          setIsPlaying(true);
+        }).catch((err) => {
+          console.log("Autoplay failed (butuh interaksi user):", err);
+          // Jika browser menolak autoplay otomatis, bacakan narasi pengenalan.
+          if (useNarrator) {
+            const narasi = isSimpleMode
+              ? "Halaman Video. Gunakan tombol untuk memutar."
+              : "Halaman Film Dongeng. Gunakan kontrol untuk memutar.";
+            
+            speakUI(narasi);
+          }
         });
-        setIsPlaying(true);
       }, 500);
 
       return () => clearTimeout(autoplayTimer);
     }
 
-    if (useVoiceControl) {
-      const narasi = isSimpleMode
-        ? "Halaman Video. Ucapkan Putar untuk menonton, Henti untuk berhenti, atau Kembali."
-        : "Halaman Film Dongeng. Ucapkan Putar untuk memutar, Pause untuk menjeda, atau Kembali.";
-
-      speakUI(narasi, () => {
-        startListening();
-      });
-    }
-
     return () => {
       isIntentionalStopRef.current = true;
       window.speechSynthesis.cancel();
-      if (recognitionRef.current) {
-        recognitionRef.current.onend = null;
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {}
-      }
-      setListeningState(false);
     };
   }, []);
-
-  const MicIndicator = () => (
-    <div className="h-6 sm:h-8 my-2 sm:my-4 flex justify-center items-center">
-      {isListening && useVoiceControl && (
-        <div className="flex gap-1 sm:gap-2 items-center text-green-600 bg-green-100 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
-          <div className="flex gap-0.5 sm:gap-1">
-            <div className="w-1 sm:w-1.5 h-2 sm:h-3 bg-green-500 animate-bounce"></div>
-            <div className="w-1 sm:w-1.5 h-4 sm:h-5 bg-green-500 animate-bounce [animation-delay:0.2s]"></div>
-            <div className="w-1 sm:w-1.5 h-2 sm:h-3 bg-green-500 animate-bounce [animation-delay:0.4s]"></div>
-          </div>
-          <span className="text-xs sm:text-sm font-bold tracking-widest uppercase">
-            Mendengarkan...
-          </span>
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <main className="min-h-screen bg-purple-50 p-2 sm:p-6 lg:p-10 flex flex-col items-center">
@@ -286,12 +118,6 @@ export default function FilmPage({ mode, onBack }) {
             onClick={() => {
               isIntentionalStopRef.current = true;
               window.speechSynthesis.cancel();
-              if (recognitionRef.current) {
-                recognitionRef.current.onend = null;
-                try {
-                  recognitionRef.current.stop();
-                } catch (e) {}
-              }
               onBack();
             }}
             className="text-purple-700 font-bold bg-white px-3 sm:px-4 py-2 rounded-full border-2 border-purple-200 active:scale-95 transition-transform outline-none focus:ring-4 focus:ring-purple-300 text-sm sm:text-base"
@@ -300,25 +126,15 @@ export default function FilmPage({ mode, onBack }) {
           </button>
         </div>
 
-        <MicIndicator />
-
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-purple-900 mb-2 sm:mb-3 lg:mb-4 mt-2 sm:mt-3">
           {isSimpleMode ? "Tonton Video" : "Film Dongeng"}
         </h1>
 
         <p className="text-sm sm:text-base lg:text-lg text-purple-700 font-medium mb-4 sm:mb-6 lg:mb-8 animate-pulse px-2">
-          {useVoiceControl ? (
-            isSimpleMode ? (
-              <>
-                Ucapkan <b>"Putar"</b>, <b>"Henti"</b>, atau <b>"Kembali"</b>
-              </>
-            ) : (
-              <>
-                Ucapkan <b>"Putar"</b>, <b>"Pause"</b>, atau <b>"Kembali"</b>
-              </>
-            )
+          {useNarrator ? (
+            <>Tonton video ini hingga selesai.</>
           ) : (
-            <>Gunakan tombol di bawah untuk memutar video</>
+            <>Gunakan kontrol di bawah untuk memutar video</>
           )}
         </p>
 
@@ -328,8 +144,10 @@ export default function FilmPage({ mode, onBack }) {
             <video
               ref={videoRef}
               onEnded={handleVideoEnd}
-              controls={!useVoiceControl}
-              autoPlay={mode !== "tuna_netra" && mode !== "tuna_daksa"}
+              onPlay={handleNativePlayPause}
+              onPause={handleNativePlayPause}
+              controls={true} /* Kontrol bawaan selalu muncul di semua mode */
+              autoPlay={true} 
               muted={mode === "tuna_rungu"}
               className="w-full h-full object-contain"
             >
@@ -339,21 +157,17 @@ export default function FilmPage({ mode, onBack }) {
           </div>
         </div>
 
-        {/* Button controls - responsive sizing */}
-        {useVoiceControl ? (
+        {/* Button controls ekstra untuk aksesibilitas jika dibutuhkan */}
+        {useNarrator ? (
           <div className="flex gap-2 sm:gap-4 justify-center mb-4 sm:mb-6 lg:mb-8 flex-wrap">
             <button
-              onClick={() => {
-                handlePlay();
-              }}
+              onClick={handlePlay}
               className="px-4 sm:px-6 py-2 sm:py-3 bg-green-400 hover:bg-green-500 text-green-900 font-bold text-sm sm:text-base rounded-xl sm:rounded-2xl shadow-md active:scale-95 transition-transform outline-none focus:ring-4 focus:ring-green-300"
             >
               ▶️ Putar
             </button>
             <button
-              onClick={() => {
-                handlePause();
-              }}
+              onClick={handlePause}
               className="px-4 sm:px-6 py-2 sm:py-3 bg-orange-400 hover:bg-orange-500 text-orange-900 font-bold text-sm sm:text-base rounded-xl sm:rounded-2xl shadow-md active:scale-95 transition-transform outline-none focus:ring-4 focus:ring-orange-300"
             >
               ⏸️ {isSimpleMode ? "Henti" : "Pause"}
