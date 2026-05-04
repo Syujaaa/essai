@@ -313,13 +313,6 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
 
   return (
     <main className="min-h-screen flex flex-col p-4 sm:p-8 animate-in fade-in duration-700 max-w-6xl mx-auto relative">
-      {/* Credits - Tidak dibaca oleh narrator */}
-      <div className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 text-[10px] sm:text-xs text-slate-400 text-right pointer-events-none" aria-hidden="true">
-        <p className="font-bold">Credits</p>
-        <p>Farras Syuja</p>
-        <p>Marizka Dwi Cahyani</p>
-        <p>Parameswara Muhammad Jahan Shah</p>
-      </div>
       <header className="flex flex-col sm:flex-row items-center justify-between bg-white p-4 sm:p-6 rounded-3xl shadow-sm border-2 border-slate-100 mb-8 mt-4">
         <div className="text-center sm:text-left mb-4 sm:mb-0">
           <h1
@@ -400,6 +393,14 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
             </div>
           </button>
         ))}
+      </div>
+
+
+      <div className="w-full text-center text-[10px] sm:text-xs text-slate-400 pointer-events-none mt-auto pt-8 pb-4" aria-hidden="true">
+        <p className="font-bold">Credits</p>
+        <p>Farras Syuja</p>
+        <p>Marizka Dwi Cahyani</p>
+        <p>Parameswara Muhammad Jahan Shah</p>
       </div>
     </main>
   );
