@@ -10,10 +10,13 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
   const [availablePieces, setAvailablePieces] = useState(initialPieces);
   const [placedPieces, setPlacedPieces] = useState([]);
   const [puzzleWon, setPuzzleWon] = useState(false);
-  const [showError, setShowError] = useState(false); // State baru untuk efek salah
+  const [showError, setShowError] = useState(false);
 
   const availablePiecesRef = useRef(availablePieces);
   const isIntentionalStopRef = useRef(false);
+
+  // [TAMBAHAN] Variabel untuk mengecek apakah mode saat ini mendukung suara
+  const isVoiceMode = mode === 'tuna_netra' || mode === 'tuna_daksa';
   
   useEffect(() => {
     availablePiecesRef.current = availablePieces;
@@ -25,7 +28,13 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
     setPlacedPieces([]);
     setPuzzleWon(false);
     setShowError(false);
-    speakUI("Game Pazel dimulai. Susun tubuh dari atas ke bawah. Sebutkan, Kepala, Badan, atau Kaki?", () => startListening('puzzle'));
+    
+    // Sesuaikan instruksi awal berdasarkan mode jika perlu
+    if (isVoiceMode) {
+        speakUI("Game Pazel dimulai. Susun tubuh dari atas ke bawah. Sebutkan, Kepala, Badan, atau Kaki?", () => startListening('puzzle'));
+    } else {
+        speakUI("Game Pazel dimulai. Susun tubuh dari atas ke bawah.");
+    }
     
     return () => {
       isIntentionalStopRef.current = true;
@@ -34,7 +43,9 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
   }, []);
 
   useEffect(() => {
-    if (!voiceCommand || mode !== 'tuna_netra') return;
+    // [UBAH DI SINI] Mikrofon sekarang merespons untuk tuna_netra DAN tuna_daksa
+    if (!voiceCommand || !isVoiceMode) return; 
+    
     const { text, context } = voiceCommand;
     const currentAvailablePieces = availablePiecesRef.current;
 
@@ -53,7 +64,7 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
       }
     }
     // eslint-disable-next-line
-  }, [voiceCommand, mode]);
+  }, [voiceCommand, mode, isVoiceMode]);
 
   const handlePlacePiece = (piece) => {
     setPlacedPieces(prevPlaced => {
@@ -66,17 +77,25 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
         if (isCorrectOrder) {
           setPuzzleWon(true);
           setVoiceContext('game_over');
-          speakUI(`${piece.name} dipasang. Hebat! Susunan tubuhnya sempurna. Ucapkan Kembali.`, () => startListening('game_over'));
+          
+          if (isVoiceMode) {
+              speakUI(`${piece.name} dipasang. Hebat! Susunan tubuhnya sempurna. Ucapkan Kembali.`, () => startListening('game_over'));
+          } else {
+              speakUI(`${piece.name} dipasang. Hebat! Susunan tubuhnya sempurna.`);
+          }
         } else {
-          // Tampilkan visual error lalu reset
           setShowError(true);
           speakUI(`${piece.name} dipasang. Yah, susunannya salah. Susun ulang dari atas ke bawah ya!`, () => {
-             setShowError(false);
-             resetPuzzle();
+              setShowError(false);
+              resetPuzzle();
           });
         }
       } else {
-        speakUI(`${piece.name} terpasang. Selanjutnya pasang apa?`, () => startListening('puzzle'));
+        if (isVoiceMode) {
+            speakUI(`${piece.name} terpasang. Selanjutnya pasang apa?`, () => startListening('puzzle'));
+        } else {
+            speakUI(`${piece.name} terpasang.`);
+        }
       }
       return newPlaced;
     });
@@ -88,14 +107,16 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
     setPuzzleWon(false);
     setShowError(false);
     setVoiceContext('puzzle');
-    speakUI("Sebutkan, Kepala, Badan, atau Kaki?", () => startListening('puzzle'));
+    
+    if (isVoiceMode) {
+        speakUI("Sebutkan, Kepala, Badan, atau Kaki?", () => startListening('puzzle'));
+    }
   };
 
   return (
     <main className="min-h-screen bg-cyan-50 p-4 sm:p-10 flex flex-col items-center">
       <div className="max-w-3xl w-full text-center">
         
-        {/* Tombol kembali di atas hanya muncul jika game belum selesai */}
         {!puzzleWon && (
           <div className="flex justify-between items-center mb-2 w-full">
             <button onClick={onBack} className="text-cyan-700 font-bold bg-white px-4 py-2 rounded-full border-2 border-cyan-200 active:scale-95 transition-transform">
@@ -110,7 +131,8 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
         
         {!puzzleWon && (
           <p className="text-cyan-700 font-medium mb-6 animate-pulse">
-            {mode === 'tuna_netra' ? (
+            {/* [UBAH DI SINI] Teks UI menyesuaikan isVoiceMode */}
+            {isVoiceMode ? (
               <>Ucapkan <b>"Kepala"</b>, <b>"Badan"</b>, atau <b>"Kaki"</b></>
             ) : (
               <>Pilih dan susun bagian tubuh dari atas ke bawah</>
@@ -122,7 +144,6 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
           
           <div className={`bg-white p-6 rounded-3xl border-4 ${showError ? 'border-red-400' : 'border-cyan-200'} flex flex-col gap-2 min-h-[350px] w-[200px] shadow-lg relative`}>
             
-            {/* Overlay jika jawaban salah (Sangat berguna untuk tuna rungu) */}
             {showError && (
               <div className="absolute inset-0 bg-red-50/95 rounded-[20px] flex flex-col items-center justify-center z-10 animate-in zoom-in duration-200">
                 <div className="text-7xl drop-shadow-md mb-2">❌</div>
@@ -144,10 +165,10 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
                 <div className="text-7xl mb-4">🎉</div>
                 <h3 className="font-black text-green-800 text-2xl mb-4">Sempurna!</h3>
                 <p className="font-medium text-green-700 mb-6">
-                  {mode === 'tuna_netra' ? <>Ucapkan <b>"Kembali"</b></> : <>Permainan selesai.</>}
+                  {/* [UBAH DI SINI] Pesan menang disesuaikan untuk mode suara */}
+                  {isVoiceMode ? <>Ucapkan <b>"Kembali"</b></> : <>Permainan selesai.</>}
                 </p>
                 
-                {/* Tombol kembali yang baru, diletakkan di bawah Sempurna */}
                 <button 
                   onClick={onBack} 
                   className="w-full py-4 bg-green-500 hover:bg-green-600 text-white font-black text-xl rounded-2xl shadow-md active:scale-95 transition-all"
@@ -156,7 +177,6 @@ export default function Puzzle({ mode, onBack, speakUI, startListening, setVoice
                 </button>
               </div>
             ) : (
-              // Tombol pilihan disembunyikan jika sedang menampilkan error agar user tidak memencet dobel
               !showError && availablePieces.map((piece) => (
                 <button 
                   key={piece.id} 
