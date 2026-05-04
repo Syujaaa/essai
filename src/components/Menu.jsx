@@ -97,7 +97,7 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
     },
     {
       id: "film",
-      title: isSimpleMode ? "Tonton Video" : "Film Dongeng",
+      title: isSimpleMode ? "Tonton Video" : "Film Edukasi",
       subtitle: isSimpleMode
         ? "Video seru tentang tubuh yang aman"
         : "Edukasi Seksual (Audio Visual)",
@@ -116,7 +116,7 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
     },
     {
       id: "studi_kasus",
-      title:  "Studi Kasus Edukatif",
+      title: "Studi Kasus Edukatif",
       subtitle: isSimpleMode
         ? "Semua anak istimewa, semua bisa jadi juara!"
         : "Menemukan Potensi dan Meraih Prestasi Gemilang",
@@ -279,7 +279,11 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
   }, [mode]); // Render ulang narasi saat mode berubah
 
   const handleMenuClick = (menu) => {
-    if (menu.id === "cerita") {
+    if (menu.id === "panduan") {
+      speak(`Membuka ${menu.title}`, () => {
+        onNavigate("panduan");
+      });
+    } else if (menu.id === "cerita") {
       speak(`Membuka ${menu.title}`, () => {
         onNavigate("cerita");
       });

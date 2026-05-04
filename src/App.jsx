@@ -5,6 +5,7 @@ import StoryPage from "./components/StoryPage";
 import GamePage from "./components/Game";
 import FilmPage from "./components/FilmPage";
 import CaseStudyPage from "./components/CaseStudyPage";
+import GuidelinePage from "./components/GuidelinePage";
 
 function App() {
   const [mode, setMode] = useState(null);
@@ -37,6 +38,10 @@ function App() {
 
       {mode && activePage === "studi_kasus" && (
         <CaseStudyPage mode={mode} onBack={() => setActivePage("home")} />
+      )}
+
+      {mode && activePage === "panduan" && (
+        <GuidelinePage mode={mode} onBack={() => setActivePage("home")} />
       )}
     </div>
   );

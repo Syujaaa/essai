@@ -104,7 +104,11 @@ export default function FilmPage({ mode, onBack }) {
       setListeningState(true);
       isIntentionalStopRef.current = false;
 
-      if (!isAutoRestart) {
+      // CEK: Apakah video sedang diputar?
+      const isVideoPlaying = videoRef.current && !videoRef.current.paused;
+
+      // Jika video sedang main, JANGAN bunyikan beep agar tidak merebut fokus audio di HP
+      if (!isAutoRestart && !isVideoPlaying) {
         playMicOnSound();
       }
       console.log("Mikrofon aktif, silakan bicara...");
@@ -149,7 +153,7 @@ export default function FilmPage({ mode, onBack }) {
           isSimpleMode
             ? "Ucapkan Putar, Henti, atau Kembali."
             : "Ucapkan Putar, Pause, atau Kembali.",
-          () => startListening(),
+          () => startListening()
         );
       }
     };
@@ -184,10 +188,17 @@ export default function FilmPage({ mode, onBack }) {
 
   const handlePlay = () => {
     if (videoRef.current) {
-      videoRef.current.play();
       setIsPlaying(true);
-      speakUI(isSimpleMode ? "Video diputar." : "Video sedang diputar.", () =>
-        startListening(),
+      // Biarkan UI berbicara DULU sampai selesai...
+      speakUI(
+        isSimpleMode ? "Video diputar." : "Video sedang diputar.",
+        () => {
+          // ...BARU video di-play setelah suara sistem mati.
+          // Ini mencegah suara sistem merebut paksa audio dari video di HP.
+          videoRef.current.play().catch((e) => console.error("Play error:", e));
+          // Start mikrofon lagi secara "silent" (tanpa beep)
+          startListening(true); 
+        }
       );
     }
   };
@@ -197,7 +208,7 @@ export default function FilmPage({ mode, onBack }) {
       videoRef.current.pause();
       setIsPlaying(false);
       speakUI(isSimpleMode ? "Video dihentikan." : "Video dijeda.", () =>
-        startListening(),
+        startListening()
       );
     }
   };
@@ -208,16 +219,14 @@ export default function FilmPage({ mode, onBack }) {
       isSimpleMode
         ? "Video selesai. Ucapkan Putar untuk menonton lagi atau Kembali ke menu."
         : "Video selesai. Ucapkan Putar untuk menonton lagi atau Kembali.",
-      () => startListening(),
+      () => startListening()
     );
   };
 
   useEffect(() => {
-    // Autoplay untuk semua mode KECUALI tuna_netra dan tuna_daksa
     const shouldAutoPlay = mode !== "tuna_netra" && mode !== "tuna_daksa";
 
     if (shouldAutoPlay && videoRef.current) {
-      // Autoplay langsung dengan delay minimal agar DOM siap
       const autoplayTimer = setTimeout(() => {
         videoRef.current?.play().catch((err) => {
           console.log("Autoplay failed:", err);
