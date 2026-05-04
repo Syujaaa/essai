@@ -93,7 +93,7 @@ export default function FilmPage({ mode, onBack }) {
           if (useNarrator) {
             const narasi = isSimpleMode
               ? "Halaman Video. Gunakan tombol untuk memutar."
-              : "Halaman Film Dongeng. Gunakan kontrol untuk memutar.";
+              : "Halaman Film Edukasi. Gunakan kontrol untuk memutar.";
             
             speakUI(narasi);
           }
@@ -127,7 +127,7 @@ export default function FilmPage({ mode, onBack }) {
         </div>
 
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-purple-900 mb-2 sm:mb-3 lg:mb-4 mt-2 sm:mt-3">
-          {isSimpleMode ? "Tonton Video" : "Film Dongeng"}
+          {isSimpleMode ? "Tonton Video" : "Film Edukasi"}
         </h1>
 
         <p className="text-sm sm:text-base lg:text-lg text-purple-700 font-medium mb-4 sm:mb-6 lg:mb-8 animate-pulse px-2">
