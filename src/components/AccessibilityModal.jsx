@@ -245,7 +245,7 @@ export default function AccessibilityModal({ onSelectMode }) {
             </div>
 
             {/* Credits - Tidak dibaca oleh narrator */}
-            <div
+            {/* <div
               className="mt-4 text-[9px] sm:text-xs text-slate-400 text-center pointer-events-none"
               aria-hidden="true"
             >
@@ -253,7 +253,7 @@ export default function AccessibilityModal({ onSelectMode }) {
               <p>Farras Syuja</p>
               <p>Marizka Dwi Cahyani</p>
               <p>Parameswara Muhammad Jahan Shah</p>
-            </div>
+            </div> */}
 
             {isListening && (
               <div className="mt-4 sm:mt-6 flex justify-center items-center gap-2 sm:gap-3 text-green-600">

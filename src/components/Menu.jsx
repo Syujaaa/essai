@@ -430,15 +430,7 @@ export default function Menu({ mode, onResetMode, onNavigate }) {
         ))}
       </div>
 
-      <div
-        className="w-full text-center text-[10px] sm:text-xs text-slate-400 pointer-events-none mt-auto pt-8 pb-4"
-        aria-hidden="true"
-      >
-        <p className="font-bold">Credits</p>
-        <p>Farras Syuja</p>
-        <p>Marizka Dwi Cahyani</p>
-        <p>Parameswara Muhammad Jahan Shah</p>
-      </div>
+      
     </main>
   );
 }
